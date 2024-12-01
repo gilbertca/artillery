@@ -1,12 +1,29 @@
-const INDEX_ERR: &str = "{func_name} could not find {object} at index {index}";
-const MIN_DIST_ERR: &str = "{func_name} failed to {action} because it is too close to another {object}";
-
+// Error definitions begin
 #[derive(Debug)]
-pub enum ArtilleryError<'a> {
-    IndexError(&'a str),
-    DistanceError(&'a str),
+pub enum ArtilleryError {
+    IndexError(String),
+    DistanceError(String),
 }
 
+impl ArtilleryError {
+    pub fn index_error(func_name: &str, index: usize) -> ArtilleryError {
+        let error_msg = format!("{func_name} failed to find an object at index: {index}").to_string();
+        ArtilleryError::IndexError(error_msg)
+    }
+
+    pub fn maximum_distance_error(func_name: &str, action: &str, coord1: Coordinate, coord2: Coordinate) -> ArtilleryError {
+        let error_msg = format!("{func_name} failed to {action}. {coord1:?} is too close to {coord2:?}.");
+        ArtilleryError::DistanceError(error_msg)
+    } 
+
+    pub fn outside_map_error(func_name: &str, action: &str) -> ArtilleryError {
+        let error_msg = format!("{func_name} failed to {action}. That location is outside the map.");
+        ArtilleryError::DistanceError(error_msg)
+    }
+}
+//Error definitions END
+
+// Coordinate definitions END
 #[derive(Debug)]
 pub struct Coordinate {
     pub x: f32,
@@ -31,13 +48,16 @@ impl Coordinate {
         radius > self.distance(coord2)
     }
 }
+// Coordinate definitions END
 
+// Game definitions BEGIN
 #[derive(Debug)]
 pub struct Game {
      pub map_radius: f32,
-     pub turn_time: u32,
+     pub turn_time: usize,
      pub target_radius: f32,
-     pub base_location: Coordinate,
+     pub max_num_units: Option<usize>,
+     pub base_coords: Coordinate,
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
      pub targets: Vec<Coordinate>,
@@ -50,13 +70,14 @@ impl Game {
     /// - `map_radius` = 100.0 -> The default map is 100 units wide
     /// - `turn_time` = 5000 -> The default number of cycles per turn is 5000
     /// - `target_radius` = 5.0 -> The default size of explosions is 5.0 units
-    /// - `base_location` = 0,0 -> The default base location is the center of the map
+    /// - `base_coords` = 0,0 -> The default base location is the center of the map
     pub fn new() -> Game {
         Game {
             map_radius: 100.0, // Currently arbitrary
             turn_time: 5000, // Currently arbitrary
             target_radius: 5.0, // Currently arbitrary
-            base_location: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
+            max_num_units: None,
+            base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             units: vec![],
             destinations: vec![],
             targets: vec![],
@@ -73,15 +94,16 @@ impl Game {
     ///
     /// Returns `()`, or `ArtilleryError` on failure. Potential variants:
     /// - DistanceError -> A unit was placed too close to another.
-    pub fn add_unit(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError>{
-        //NOTE: Need to incorporate minimum distances
-        self.units.push(Coordinate {x, y});
-        self.destinations.push(Coordinate {x, y});
-        if true {Ok(())}
-        else {Err(ArtilleryError::anceError(MIN_DIST_ERR))}
-    }
+//    pub fn add_unit(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError>{
+//        // NOTE: Do checks here.
+//        // All checks succeeded, push the coordinates:
+//        self.units.push(Coordinate {x, y});
+//        self.destinations.push(Coordinate {x, y});
+//    }
 
     /// `remove_unit` accepts an `index` value, and removes the corresponding unit from the game.
+    ///
+    /// Returns an `IndexError` if a unit does not exist.
     pub fn remove_unit(&mut self, index:usize) -> Result<(), ArtilleryError> {
         if let Some(unit) = self.units.get(index) {
             self.units.remove(index);
@@ -89,21 +111,51 @@ impl Game {
             Ok(())
         }
         else {
-            Err(ArtilleryError::IndexError("remove_unit could not find a unit at index={index}"))
+            Err(ArtilleryError::index_error("remove_unit", index))
         }
     }
 
-//    /// `get_unit` accepts an `index` value, and returns the Coordinate for that unit.
-//    pub fn get_unit(&self, index:usize) -> Result<&Coordinate, ArtilleryError> {
-//    }
+    /// `get_unit` accepts an `index` value, and returns the Coordinate for that unit.
+    ///
+    /// Returns an `IndexError` if a unit does not exist.
+    pub fn get_unit(&self, index:usize) -> Result<&Coordinate, ArtilleryError> {
+        if let Some(unit) = self.units.get(index) {
+            Ok(unit)
+        }
+        else {
+            Err(ArtilleryError::index_error("get_unit", index))
+        }
+    }
 
     /// `set_destination` accepts an `index`, `x`, and `y`, value, and updates the corresponding
-    /// destination.
+    /// destination contained in `self.destinations`.
     ///
     /// *Destinations are never removed, they can only be reset.*
-    pub fn set_destination(&mut self, index:usize, x:f32, y:f32) {
-        self.destinations[index] = Coordinate {x:x, y:y};
+    pub fn set_destination(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
+        if let Err(unit_position) = self.get_unit(index) {
+            return Err(ArtilleryError::index_error("set_destination", index));
+        }
+
+        let temp_coord = Coordinate {x:x, y:y};
+        // Check if Coordinate falls outside of map; return early if true
+        if temp_coord.distance(&self.base_coords) > self.map_radius {
+            return Err(ArtilleryError::outside_map_error("set_destination", format!("set a unit's destination to {temp_coord:?}").as_str()));
+        }
+
+        // Check if Coordinate falls outside of units range; return early if true
+        self.destinations[index] = temp_coord;
+        Ok(())
     }
+
+    /// `set_position` accepts an `index`, `x`, and `y` value, and updates the corresponding position
+    /// contained in `self.units`.
+    ///
+    /// NOTE: maybe later this will be abstracted to allow setting the position of *anything*, such
+    /// as the base's position. Also, it could replace `set_destination` since we can accept a
+    /// pointer to any vector which contains coordinates.
+//    pub fn set_position(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
+//        self.units[index] = Coordinate {x:x, y:y};
+//    }
 
     /// `add_target` accepts an `x` value and `y` value as floats, and creates a target at that
     /// location.
@@ -172,4 +224,4 @@ impl Game {
         }
     }
 }
-
+// Game definitions END
