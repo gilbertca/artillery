@@ -11,20 +11,16 @@ impl ArtilleryError {
         ArtilleryError::IndexError(error_msg)
     }
 
-    pub fn maximum_distance_error(func_name: &str, action: &str, coord1: Coordinate, coord2: Coordinate) -> ArtilleryError {
-        let error_msg = format!("{func_name} failed to {action}. {coord1:?} is too close to {coord2:?}.");
+    pub fn maximum_distance_error(func_name: &str, action: &str, coord1: &Coordinate, coord2: &Coordinate) -> ArtilleryError {
+        let error_msg = format!("{func_name} failed to {action}. {coord1:?} is too far from {coord2:?}.");
         ArtilleryError::DistanceError(error_msg)
     } 
 
-    pub fn outside_map_error(func_name: &str, action: &str) -> ArtilleryError {
-        let error_msg = format!("{func_name} failed to {action}. That location is outside the map.");
-        ArtilleryError::DistanceError(error_msg)
-    }
 }
-//Error definitions END
+// Error definitions END
 
 // Coordinate definitions END
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Coordinate {
     pub x: f32,
     pub y: f32
@@ -56,8 +52,8 @@ pub struct Game {
      pub map_radius: f32,
      pub turn_time: usize,
      pub target_radius: f32,
-     pub max_num_units: Option<usize>,
      pub base_coords: Coordinate,
+     pub max_unit_range: f32,
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
      pub targets: Vec<Coordinate>,
@@ -76,14 +72,15 @@ impl Game {
             map_radius: 100.0, // Currently arbitrary
             turn_time: 5000, // Currently arbitrary
             target_radius: 5.0, // Currently arbitrary
-            max_num_units: None,
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
+            max_unit_range: 2.0, // Currently arbitrary
             units: vec![],
             destinations: vec![],
             targets: vec![],
         }
     }
 
+// adders BEGIN
     /// `add_unit` accepts an `x` value and a `y` value as floats, and creates a unit at that location.
     ///
     /// Automatically populates `self.units` with the `Coordinate`s, and sets
@@ -94,55 +91,138 @@ impl Game {
     ///
     /// Returns `()`, or `ArtilleryError` on failure. Potential variants:
     /// - DistanceError -> A unit was placed too close to another.
-//    pub fn add_unit(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError>{
-//        // NOTE: Do checks here.
-//        // All checks succeeded, push the coordinates:
-//        self.units.push(Coordinate {x, y});
-//        self.destinations.push(Coordinate {x, y});
-//    }
+    pub fn add_unit(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError>{
+        // NOTE: Do checks here.
+        // All checks succeeded, push the coordinates:
+        //self.get_units().push(Coordinate {x, y});
+        //self.get_destinations().push(Coordinate {x, y});
+        if true { return Ok(()) } else { return Err(ArtilleryError::IndexError("test".to_string())); }
+    }
 
+    /// `add_target` accepts an `x` value and `y` value as floats, and creates a target at that
+    /// location.
+    ///
+    /// NOTE: must calculate a resource cost
+    pub fn add_target(&mut self, x:f32, y:f32) {
+        self.targets.push(Coordinate {x, y});
+    }
+// adders END
+
+// removers BEGIN
     /// `remove_unit` accepts an `index` value, and removes the corresponding unit from the game.
     ///
     /// Returns an `IndexError` if a unit does not exist.
     pub fn remove_unit(&mut self, index:usize) -> Result<(), ArtilleryError> {
-        if let Some(unit) = self.units.get(index) {
-            self.units.remove(index);
-            self.destinations.remove(index);
-            Ok(())
-        }
-        else {
-            Err(ArtilleryError::index_error("remove_unit", index))
+        match self.get_unit(index) {
+            Err(_) => Err(ArtilleryError::index_error("remove_unit", index)),
+            Ok(_) => {
+                self.units.remove(index);
+                self.destinations.remove(index);
+                Ok(())
+            },
         }
     }
 
-    /// `get_unit` accepts an `index` value, and returns the Coordinate for that unit.
+    /// `remove_target` accepts an `index` value, and removes the corresponding target from the
+    /// game.
+    ///
+    /// NOTE: must remove a resource cost
+    pub fn remove_target(&mut self, index:usize) {
+        self.targets.remove(index);
+    }
+// removers END
+
+// getters BEGIN
+    /// `get_unit` accepts an `index` value, and returns the Coordinate for that unit. This
+    /// `Coordinate` represents a unit's current position.
     ///
     /// Returns an `IndexError` if a unit does not exist.
-    pub fn get_unit(&self, index:usize) -> Result<&Coordinate, ArtilleryError> {
-        if let Some(unit) = self.units.get(index) {
-            Ok(unit)
-        }
-        else {
-            Err(ArtilleryError::index_error("get_unit", index))
+    pub fn get_unit(&mut self, index:usize) -> Result<&Coordinate, ArtilleryError> {
+        match self.get_units().get(index) {
+            None => Err(ArtilleryError::index_error("get_unit", index)),
+            Some(unit) => Ok(unit)
         }
     }
 
+    /// `get_units` returns a vector of coordinates. Each `Coordinate` represents a unit's current
+    /// position.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct ever changes.
+    pub fn get_units(&mut self) -> &mut Vec<Coordinate> {
+        &mut self.units
+    }
+
+    /// `get_destination` accepts an `index` value, and returns a Coordinate for that unit. This
+    /// `Coordinate` represents a unit's current destination.
+    ///
+    /// Returns an `IndexError` if a destination does not exist.
+    pub fn get_destination(&self, index: usize) -> Result<&Coordinate, ArtilleryError> {
+        match self.get_destinations().get(index) {
+            None => Err(ArtilleryError::index_error("get_destination", index)),
+            Some(unit) => Ok(unit)
+        }
+    }
+
+    /// `get_destinations` returns a vector of coordinates. Each `Coordinate` represents a unit's current
+    /// destination.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct ever changes.
+    pub fn get_destinations(&self) -> &Vec<Coordinate> {
+        &self.destinations
+    }
+
+    /// `get_target` accepts an `index` value, and returns a `Coordinate` for that target. This
+    /// `Coordinate` represents an artillery target.
+    ///
+    /// Returns an `IndexError` if a target does not exist.
+    pub fn get_target(&self, index:usize) -> Result<&Coordinate, ArtilleryError> {
+        match self.get_targets().get(index) {
+            None => Err(ArtilleryError::index_error("get_destination", index)),
+            Some(target) => Ok(target)
+        }
+    }
+
+    /// `get_targets` returns a vector of coordinates. Each `Coordinate` represents an
+    /// artillery target.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct changes.
+    pub fn get_targets(&self) -> &Vec<Coordinate> {
+        &self.targets
+    }
+
+    /// `get_base_coords` returns a reference to a `Coordinate`. This `Coordinate` represents the
+    /// location of the artillery player's base.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct changes.
+    pub fn get_base_coords(&self) -> &Coordinate {
+        &self.base_coords
+    }
+// getters END
+
+// setters BEGIN
     /// `set_destination` accepts an `index`, `x`, and `y`, value, and updates the corresponding
     /// destination contained in `self.destinations`.
     ///
     /// *Destinations are never removed, they can only be reset.*
     pub fn set_destination(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
-        if let Err(unit_position) = self.get_unit(index) {
-            return Err(ArtilleryError::index_error("set_destination", index));
-        }
+        // Check if the unit exists; return early if false
+        let unit = match self.get_unit(index) {
+            Ok(unit) => unit.clone(),
+            Err(_) => return Err(ArtilleryError::index_error("set_destination", index))
+        };
 
         let temp_coord = Coordinate {x:x, y:y};
         // Check if Coordinate falls outside of map; return early if true
         if temp_coord.distance(&self.base_coords) > self.map_radius {
-            return Err(ArtilleryError::outside_map_error("set_destination", format!("set a unit's destination to {temp_coord:?}").as_str()));
+            return Err(ArtilleryError::maximum_distance_error("set_destination", "set a unit's destination outside of the map", &temp_coord, &self.base_coords));
         }
 
         // Check if Coordinate falls outside of units range; return early if true
+        if temp_coord.distance(&unit) > self.max_unit_range {
+            return Err(ArtilleryError::maximum_distance_error("set_destination", "set a unit's destination beyond their maximum range", &temp_coord, &unit));
+        }
+
+        // Checks complete
         self.destinations[index] = temp_coord;
         Ok(())
     }
@@ -154,24 +234,11 @@ impl Game {
     /// as the base's position. Also, it could replace `set_destination` since we can accept a
     /// pointer to any vector which contains coordinates.
 //    pub fn set_position(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
-//        self.units[index] = Coordinate {x:x, y:y};
+//        self.get_units()[index] = Coordinate {x:x, y:y};
 //    }
+// setters END
 
-    /// `add_target` accepts an `x` value and `y` value as floats, and creates a target at that
-    /// location.
-    ///
-    /// NOTE: must calculate a resource cost
-    pub fn add_target(&mut self, x:f32, y:f32) {
-        self.targets.push(Coordinate {x, y});
-    }
 
-    /// `remove_target` accepts an `index` value, and removes the corresponding target from the
-    /// game.
-    ///
-    /// NOTE: must remove a resource cost
-    pub fn remove_target(&mut self, index:usize) {
-        self.targets.remove(index);
-    }
 
     /// Returns a tuple of floats representing the x and x components of a unit's velocity.
     ///
@@ -192,10 +259,6 @@ impl Game {
         let unit_coords = &self.units[unit_index];
         target_coords.contains(unit_coords, self.target_radius)
     }
-
-    //fn calculate_radius(&self) -> f32 {
-
-    //}
 
     //fn shot_cost(&self) -> f32 {
 
