@@ -54,6 +54,8 @@ pub struct Game {
      pub target_radius: f32,
      pub base_coords: Coordinate,
      pub max_unit_range: f32,
+     pub max_resources: f32,
+     pub cur_resources: f32,
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
      pub targets: Vec<Coordinate>,
@@ -74,6 +76,8 @@ impl Game {
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             max_unit_range: 2.0, // Currently arbitrary
+            max_resources: 100.0, // Currently arbitrary
+            cur_resources: 100.0, // Currently arbitrary
             units: vec![],
             destinations: vec![],
             targets: vec![],
@@ -254,30 +258,29 @@ impl Game {
     /// `set_position` accepts an `index`, `x`, and `y` value, and updates the corresponding position
     /// contained in `self.units`.
     ///
+    /// This method is used to set a units position
+    ///
     /// NOTE: maybe later this will be abstracted to allow setting the position of *anything*, such
-    /// as the base's position. Also, it could replace `set_destination` since we can accept a
+    /// as the base's position. Also, it could replace `set_destination` since we *could* accept a
     /// pointer to any vector which contains coordinates.
-//    pub fn set_position(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
-//        // Check if unit exists; return early if false
-//        let unit = match self.get_unit(index) {
-//            Err(_) => return Err(ArtilleryError::index_error("set_position", index)),
-//            Ok(unit) => unit,
-//        };
-//
-//        // Check if Coordinate falls outside of map; return early if true
-//        let temp_coord = Coordinate {x:x, y:y};
-//        let base_coords = self.get_base_coords();
-//        if temp_coord.distance(&base_coords) > self.get_map_radius() {
-//            return Err(ArtilleryError::maximum_distance_error("set_destination", "set a unit's destination outside of the map", &temp_coord, &self.base_coords));
-//        }
-//
-//        // Checks complete
-//        let units = self.get_units();
-//        units[index] = temp_coord;
-//        Ok(())
-//    }
+    pub fn set_position(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
+        // Check if unit exists; return early if false
+        let unit = match self.get_unit(index) {
+            Err(_) => return Err(ArtilleryError::index_error("set_position", index)),
+            Ok(unit) => unit,
+        };
 
+        // Check if Coordinate falls outside of map; return early if true
+        let temp_coord = Coordinate {x:x, y:y};
+        if temp_coord.distance(self.get_base_coords()) > self.get_map_radius() {
+            return Err(ArtilleryError::maximum_distance_error("set_destination", "set a unit's destination outside of the map", &temp_coord, &self.base_coords));
+        }
 
+        // Checks complete
+        self.get_units()[index] = temp_coord;
+        Ok(())
+    }
+// setters END
 
     /// Returns a tuple of floats representing the x and x components of a unit's velocity.
     ///
@@ -299,9 +302,12 @@ impl Game {
         target_coords.contains(unit_coords, self.target_radius)
     }
 
-    //fn shot_cost(&self) -> f32 {
-
-    //}
+    /// `shot_cust` accepts a `Coordinate`, and returns the *resource cost* for each shot.
+    ///
+    /// For now, this will always be 10.0
+    fn shot_cost(&self, coord: &Coordinate) -> f32 {
+        10.0
+    }
 
     /// Simulates a turn once all destinations / targets have been accepted. This function does not
     /// perform **any** validation. It is assumed that **all* input has been validated up to this
@@ -318,10 +324,10 @@ impl Game {
     ///     2. If an explosion happens that milisecond, determine units in danger zones. If effected, the
     ///        unit is removed from the game using `remove_unit`
     /// 4. Determine if either player has won the game
-    pub fn run_turn(&self) {
+    pub fn run_turn(&mut self) {
         // Calculate velocities:
         let mut velocities = vec![];
-        for (index, _) in self.units.iter().enumerate() {
+        for  {
             velocities.push(self.calculate_velocity(index));
         }
     }
