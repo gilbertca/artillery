@@ -290,7 +290,7 @@ impl Game {
         Ok(())
     }
 // setters END
-
+// helpers BEGIN
     /// Returns a tuple of floats representing the x and x components of a unit's velocity.
     ///
     /// For every iteration of `turn_time`, these values are added/subtracted from a unit's x and y components to represent movement.
@@ -317,7 +317,8 @@ impl Game {
     fn shot_cost(&self, coord: &Coordinate) -> f32 {
         10.0
     }
-
+// helpers END
+// main LOOP
     /// Simulates a turn once all destinations / targets have been accepted. This function does not
     /// perform **any** validation. It is assumed that **all* input has been validated up to this
     /// point.
@@ -346,13 +347,19 @@ impl Game {
         }
 
         // Calculate artillery timing - NEED SHOT COSTS
-        let target_times = vec![1,2,3,4]; // ARBITRARY
+        // MINIMUM - 3
+        // MAXIMUM - 20
+        // LET N = 100
+        // AT MAX N = 33.33
+        // AT MIN N = 5
+        // let target_times = vec![1,2,3,4]; // ARBITRARY
         
         // Iterate n = self.turn_time times to simulate a turn
         for cur_tick in 0..self.turn_time {
             // Add velocity components 
             for (index, velocity) in velocities.clone().into_iter().enumerate() {
                 self.get_units()[index].x += velocity.0;
+            // main LOOP
                 self.get_units()[index].y += velocity.1;
             }
 
@@ -392,5 +399,6 @@ impl Game {
         // If neither player has won by now, return 0 to indicate game is still going.
         return 0;
     }
+// main LOOP
 }
 // Game definitions END
