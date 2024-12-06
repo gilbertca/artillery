@@ -53,6 +53,7 @@ pub struct Game {
      pub turn_time: usize,
      pub target_radius: f32,
      pub base_coords: Coordinate,
+     pub base_radius: f32,
      pub max_unit_range: f32,
      pub max_resources: f32,
      pub cur_resources: f32,
@@ -75,6 +76,7 @@ impl Game {
             turn_time: 5000, // Currently arbitrary
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
+            base_radius: 1.0, // Currently arbitrary
             max_unit_range: 2.0, // Currently arbitrary
             max_resources: 100.0, // Currently arbitrary
             cur_resources: 100.0, // Currently arbitrary
@@ -211,6 +213,13 @@ impl Game {
         &self.base_coords
     }
 
+    /// `get_base_radius` returns the radius of the base.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct changes.
+    pub fn get_base_radius(&self) -> f32 {
+        self.base_radius
+    }
+
     /// `get_map_radius` returns the radius of the map.
     ///
     /// Should never fail. Useful if the underlying `Game` struct changes.
@@ -329,18 +338,59 @@ impl Game {
     /// 4. Determine if either player has won the game.
     ///
     /// Returns 0 with no winners, 1 if the army player wins, 2 if the artillery player ends.
-    pub fn run_turn(&mut self) {
+    pub fn run_turn(&mut self) -> usize {
         // Calculate velocities:
         let mut velocities = vec![];
         for index in 0..self.get_units().len() {
             velocities[index] = self.calculate_velocity(index);
         }
 
-        // Calculate artillery timing
+        // Calculate artillery timing - NEED SHOT COSTS
+        let target_times = vec![1,2,3,4]; // ARBITRARY
         
         // Iterate n = self.turn_time times to simulate a turn
+        for cur_tick in 0..self.turn_time {
+            // Add velocity components 
+            for (index, velocity) in velocities.clone().into_iter().enumerate() {
+                self.get_units()[index].x += velocity.0;
+                self.get_units()[index].y += velocity.1;
+            }
 
-        // Return the winner
+            // Check if an explosion occurs; mark units in danger
+            let mut destroyed_units_index = vec![];
+            if target_times.contains(&cur_tick) {
+                for (target_index, _) in self.get_targets().clone().into_iter().enumerate() {
+                    for (unit_index, _) in self.get_units().clone().into_iter().enumerate() {
+                        if self.is_in_danger(target_index, unit_index) {
+                            destroyed_units_index.push(unit_index)
+                        }
+                    }
+                }
+            }
+            // Remove units in danger. Sorting the vector, and then popping the elements prevents
+            // side-effects caused by removing items from the list.
+            destroyed_units_index.sort();
+            while let Some(index) = destroyed_units_index.pop() {
+                self.remove_unit(index);
+            }
+            
+            // Check if either player has won:
+            let units = self.get_units();
+            // Player 2 wins if there are no units on the board
+            if units.is_empty() {
+                return 2;
+            }
+            // Player 1 wins if there is a unit at the base
+            let base_coords = self.get_base_coords().clone();
+            let base_radius = self.get_base_radius().clone();
+            for unit in self.get_units() { // Player 1 checks
+                if unit.contains(&base_coords, base_radius) {
+                    return 1;
+                }
+            }
+        }
+        // If neither player has won by now, return 0 to indicate game is still going.
+        return 0;
     }
 }
 // Game definitions END
