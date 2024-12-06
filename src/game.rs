@@ -313,23 +313,34 @@ impl Game {
     /// perform **any** validation. It is assumed that **all* input has been validated up to this
     /// point.
     ///
-    /// Once the end conditions have been met (either no units, or a unit at the base) this method
-    /// will signal that the game is over, and reset the game's state.
+    /// Once the end conditions have been met (either no units remain, or a unit at the base) this
+    /// method will signal that the game is over, and reset the game's state.
     ///
     /// `run_turn` performs the following tasks:
     /// 1. Calculate the velocities of all units
     /// 2. Calculate the timing of artillery fire. NOTE: requires algo for shot costs
-    /// 3. Iterate over each milisecond set by `self.turn_time`. Each iteration:
+    ///     - Each shot is represented by an integer 'm' within an iterable. The main loop iterates
+    ///     'n' times, where n = `self.turn_time`. When n == m, an explosion occurs and units are
+    ///     checked for danger.
+    /// 3. Iterate over each 'tick' set by `self.turn_time`. Each iteration:
     ///     1. Add velocity to each unit's coordinates to determine new position
-    ///     2. If an explosion happens that milisecond, determine units in danger zones. If effected, the
+    ///     2. If an explosion happens that tick, determine units in danger zones. If effected, the
     ///        unit is removed from the game using `remove_unit`
-    /// 4. Determine if either player has won the game
+    /// 4. Determine if either player has won the game.
+    ///
+    /// Returns 0 with no winners, 1 if the army player wins, 2 if the artillery player ends.
     pub fn run_turn(&mut self) {
         // Calculate velocities:
         let mut velocities = vec![];
-        for  {
-            velocities.push(self.calculate_velocity(index));
+        for index in 0..self.get_units().len() {
+            velocities[index] = self.calculate_velocity(index);
         }
+
+        // Calculate artillery timing
+        
+        // Iterate n = self.turn_time times to simulate a turn
+
+        // Return the winner
     }
 }
 // Game definitions END
