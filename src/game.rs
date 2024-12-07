@@ -3,6 +3,7 @@
 pub enum ArtilleryError {
     IndexError(String),
     DistanceError(String),
+    ResourceError(String),
 }
 
 impl ArtilleryError {
@@ -16,6 +17,10 @@ impl ArtilleryError {
         ArtilleryError::DistanceError(error_msg)
     } 
 
+    pub fn resource_error(func_name: &str, action: &str, cost: f32) -> ArtilleryError {
+        let error_msg = format!("{func_name} failed to {action}.");
+        ArtilleryError::ResourceError(error_msg)
+    }
 }
 // Error definitions END
 
@@ -60,7 +65,7 @@ pub struct Game {
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
      pub targets: Vec<Coordinate>,
-     pub target_costs: Vec<usize>,
+     pub target_costs: Vec<f32>,
 }
 
 /// This implementation is the full interface to interact with the Artillery game.
@@ -100,8 +105,14 @@ impl Game {
     /// Returns `()`, or `ArtilleryError` on failure. Potential variants:
     /// - DistanceError -> A unit was placed too close to another.
     pub fn add_unit(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError>{
-        // NOTE: Do checks here.
-        if false { return Err(ArtilleryError::index_error("ONLY HERE FOR COMPILER", 1)); }
+        // Check if Coordinate is outside map:
+        let temp_coord = Coordinate {x, y};
+        if !self.is_in_map(&temp_coord) {
+            return Err(ArtilleryError::maximum_distance_error("add_unit", "place a target outside the map", self.get_base_coords(), &temp_coord));
+        }
+        
+        // Possible checks for where units can be placed, like bases?
+
         // All checks succeeded, push the coordinates:
         self.get_units().push(Coordinate {x, y});
         self.get_destinations().push(Coordinate {x, y});
@@ -111,7 +122,9 @@ impl Game {
     /// `add_target` accepts an `x` value and `y` value as floats, and creates a target at that
     /// location.
     ///
-    /// NOTE: must calculate a resource cost
+    /// Returns `()`, or `ArtilleryError` on failure. Potential variants:
+    /// - DistanceError -> Target was placed outside the map
+    /// - ResourceError -> Player does not have enough free resources to place target.
     pub fn add_target(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError> {
         let temp_coord = Coordinate {x, y};
         // Check if the target is outside the map:
@@ -121,13 +134,15 @@ impl Game {
 
         // Check if player 2 is out of resources:
         let shot_cost = self.shot_cost(&temp_coord);
-        let temp_cost: usize = self.get_target_costs().into_iter().sum();
-        if shot_cost > self.get_max_resources() - temp_cost{
-            let x = 1;
+        let temp_cost: f32 = self.get_target_costs().to_owned().into_iter().sum();
+        let available_resources = self.get_max_resources() - temp_cost;
+        if shot_cost > available_resources {
+            return Err(ArtilleryError::resource_error("add_target", format!("place a target. Cost: {shot_cost} Available: {available_resources}").as_str(), shot_cost));
         }
 
         // Add the target, and add the shot cost:
-        self.targets.push(Coordinate {x, y});
+        self.get_targets().push(Coordinate {x, y});
+        self.get_target_costs().push(temp_cost);
         Ok(())
     }
 // adders END
@@ -188,7 +203,7 @@ impl Game {
     /// for each artillery shot.
     ///
     /// Should never fail. Useful if the underlying `Game` struct ever changes.
-    pub fn get_target_costs(&mut self) -> &mut Vec<usize> {
+    pub fn get_target_costs(&mut self) -> &mut Vec<f32> {
         &mut self.target_costs
     }
 
@@ -366,9 +381,9 @@ impl Game {
     }
 // helpers END
 // main LOOP
-    /// Simulates a turn once all destinations / targets have been accepted. This function does not
-    /// perform **any** validation. It is assumed that **all* input has been validated up to this
-    /// point.
+    /// `run_turn` simulates a turn once all destinations / targets have been accepted. This
+    /// function does not perform **any** validation. It is assumed that **all* input has 
+    /// been validated up to this point.
     ///
     /// Once the end conditions have been met (either no units remain, or a unit at the base) this
     /// method will signal that the game is over, and reset the game's state.
@@ -385,7 +400,7 @@ impl Game {
     ///        unit is removed from the game using `remove_unit`
     /// 4. Determine if either player has won the game.
     ///
-    /// Returns 0 with no winners, 1 if the army player wins, 2 if the artillery player ends.
+    /// Returns 0 with no winners, 1 if the army player wins, 2 if the artillery player wins.
     pub fn run_turn(&mut self) -> usize {
         // Calculate velocities:
         let mut velocities = vec![];
@@ -402,7 +417,6 @@ impl Game {
             // Add velocity components 
             for (index, velocity) in velocities.clone().into_iter().enumerate() {
                 self.get_units()[index].x += velocity.0;
-            // main LOOP
                 self.get_units()[index].y += velocity.1;
             }
 
