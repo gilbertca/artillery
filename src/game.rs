@@ -60,6 +60,7 @@ pub struct Game {
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
      pub targets: Vec<Coordinate>,
+     pub target_costs: Vec<usize>,
 }
 
 /// This implementation is the full interface to interact with the Artillery game.
@@ -83,6 +84,7 @@ impl Game {
             units: vec![],
             destinations: vec![],
             targets: vec![],
+            target_costs: vec![],
         }
     }
 
@@ -110,8 +112,23 @@ impl Game {
     /// location.
     ///
     /// NOTE: must calculate a resource cost
-    pub fn add_target(&mut self, x:f32, y:f32) {
+    pub fn add_target(&mut self, x:f32, y:f32) -> Result<(), ArtilleryError> {
+        let temp_coord = Coordinate {x, y};
+        // Check if the target is outside the map:
+        if !self.is_in_map(&temp_coord) {
+            return Err(ArtilleryError::maximum_distance_error("add_target", "place a target outside the map", self.get_base_coords(), &temp_coord));
+        }
+
+        // Check if player 2 is out of resources:
+        let shot_cost = self.shot_cost(&temp_coord);
+        let temp_cost: usize = self.get_target_costs().into_iter().sum();
+        if shot_cost > self.get_max_resources() - temp_cost{
+            let x = 1;
+        }
+
+        // Add the target, and add the shot cost:
         self.targets.push(Coordinate {x, y});
+        Ok(())
     }
 // adders END
 
@@ -165,6 +182,14 @@ impl Game {
     /// Should never fail. Useful if the underlying `Game` struct ever changes.
     pub fn get_units(&mut self) -> &mut Vec<Coordinate> {
         &mut self.units
+    }
+
+    /// `get_target_costs` returns a vector of integers. Each integer represents the resource cost
+    /// for each artillery shot.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct ever changes.
+    pub fn get_target_costs(&mut self) -> &mut Vec<usize> {
+        &mut self.target_costs
     }
 
     /// `get_destination` accepts an `index` value, and returns a Coordinate for that unit. This
@@ -234,6 +259,12 @@ impl Game {
         self.max_unit_range
     }
 
+    /// `get_max_resources` returns the max resources for the artillery player.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct changes.
+    pub fn get_max_resources(&self) -> f32 {
+        self.max_resources
+    }
 // getters END
 
 // setters BEGIN
@@ -311,11 +342,27 @@ impl Game {
         target_coords.contains(unit_coords, self.target_radius)
     }
 
-    /// `shot_cust` accepts a `Coordinate`, and returns the *resource cost* for each shot.
+    /// `shot_cost` accepts two `Coordinate`s, and returns the *resource cost* for each shot.
     ///
-    /// For now, this will always be 10.0
-    fn shot_cost(&self, coord: &Coordinate) -> f32 {
-        10.0
+    /// This function does not validate that the shot lies within the map.
+    ///
+    ///
+    fn shot_cost(&mut self, coord: &Coordinate) -> f32 {
+        let distance;
+        if self.get_targets().is_empty() {
+            distance = self.get_base_coords().distance(coord);
+        }
+        else {
+            distance = self.get_targets().clone()[self.get_targets().len()].distance(coord);
+        }
+        return 0.00122 * distance.powf(2.0) + 0.16 * distance + 4.83;
+    }
+
+    /// `is_in_map` accepts a Coordinate and determines if that point is within the map.
+    ///
+    /// Returns true if inside the map, false if outside the map.
+    fn is_in_map(&self, coord: &Coordinate) -> bool {
+        self.get_base_coords().contains(coord, self.get_map_radius())
     }
 // helpers END
 // main LOOP
@@ -346,13 +393,9 @@ impl Game {
             velocities[index] = self.calculate_velocity(index);
         }
 
-        // Calculate artillery timing - NEED SHOT COSTS
-        // MINIMUM - 3
-        // MAXIMUM - 20
-        // LET N = 100
-        // AT MAX N = 33.33
-        // AT MIN N = 5
-        // let target_times = vec![1,2,3,4]; // ARBITRARY
+        // Calculate shot costs:
+        let mut shot_costs: Vec<usize> = vec![];
+        let mut target_times: Vec<usize> = vec![];
         
         // Iterate n = self.turn_time times to simulate a turn
         for cur_tick in 0..self.turn_time {
