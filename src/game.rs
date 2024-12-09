@@ -140,7 +140,7 @@ impl Game {
 
         // Add the target, and add the shot cost:
         self.get_targets().push(Coordinate {x, y});
-        self.get_target_costs().push(temp_cost);
+        self.get_target_costs().push(temp_cost); //THIS ISN'T RIGHT
         Ok(())
     }
 // adders END
@@ -378,6 +378,20 @@ impl Game {
     fn is_in_map(&self, coord: &Coordinate) -> bool {
         self.get_base_coords().contains(coord, self.get_map_radius())
     }
+
+    /// `reset_targets` clears all `Coordinates` within self.targets, and removes all costs within
+    /// self.target_costs.
+    /// 
+    /// Should never fail.
+    pub fn reset_targets(&mut self) {
+        self.get_targets().clear();
+        self.get_target_costs().clear();
+    }
+
+    /// `reset_game` replaces itself with a fresh copy of the game.
+    pub fn reset_game(&mut self) {
+        *self = Game::new();
+    }
 // helpers END
 // main LOOP
     /// `run_turn` simulates a turn once all destinations / targets have been accepted. This
@@ -462,6 +476,7 @@ impl Game {
             let units = self.get_units();
             // Player 2 wins if there are no units on the board
             if units.is_empty() {
+                self.reset_game();
                 return 2;
             }
             // Player 1 wins if there is a unit at the base
@@ -469,11 +484,13 @@ impl Game {
             let base_radius = self.get_base_radius().clone();
             for unit in self.get_units() { // Player 1 checks
                 if unit.contains(&base_coords, base_radius) {
+                    self.reset_game();
                     return 1;
                 }
             }
         }
-        // If neither player has won by now, return 0 to indicate game is still going.
+        // If neither player has won by now, return 0 and cleanup targets:
+        self.reset_targets();
         return 0;
     }
 // main LOOP
