@@ -78,7 +78,7 @@ impl Game {
     pub fn new() -> Game {
         Game {
             map_radius: 100.0, // Currently arbitrary
-            turn_time: 5000, // Currently arbitrary
+            turn_time: 100, // Currently arbitrary
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             base_radius: 1.0, // Currently arbitrary
@@ -140,7 +140,7 @@ impl Game {
 
         // Add the target, and add the shot cost:
         self.get_targets().push(Coordinate {x, y});
-        self.get_target_costs().push(temp_cost); //THIS ISN'T RIGHT
+        self.get_target_costs().push(shot_cost);
         Ok(())
     }
 // adders END
@@ -367,7 +367,7 @@ impl Game {
             distance = self.get_base_coords().distance(coord);
         }
         else {
-            distance = self.get_targets().clone()[self.get_targets().len()].distance(coord);
+            distance = self.get_targets().clone()[self.get_targets().len() - 1].distance(coord);
         }
         return 0.00122 * distance.powf(2.0) + 0.16 * distance + 4.83;
     }
@@ -438,31 +438,30 @@ impl Game {
 
             // Check if an explosion occurs; mark units in danger
             // Each entry in target_costs is represented by an f32. This float represents the
-            // // resource cost for each shot. These must be rounded-down and cast as integers.
-            // // They must be integers because the game iterates over a range of integers, and we
-            // can
-            // // determine the timing of the shots by matching the two numbers.
-            // // Example:
-            // // targets = [(10, 20), (30, 40), (50, 60)] ==> The coordinates of each target
-            // // target_costs = [30, 5, 10, ...] ==> The individual cost of each shot/target
-            // // current_iteration = n ==> The current "tick" for the simulation
-            // // WHEN n == target_costs[0] == 30:
-            // //  ITERATE over units with enumerate - check each for proximity to targets[0] ==
-            // (10, 20)
-            // //  IF a unit is caught, the index is recorded and they are removed from the game
-            // // WHEN n = target_costs[1] + target_costs[0] == 30 + 5 == 35 ==> Next tick is the
-            // sum
-            // //  ITERATE over units - check proximity to targets[1] == (30, 40)
-            // //  IF a unit is caught, ....
-            // // WHEN n = target_costs[2] + target_costs[1] + target_costs[0] == 30+5+10 = 45
-            // //  .... AND SO ON
+            // resource cost for each shot. These must be rounded-down and cast as integers.
+            // They must be integers because the game iterates over a range of integers, and we can
+            // determine the timing of the shots by matching the two numbers.
+            // Example:
+            // targets = [(10, 20), (30, 40), (50, 60)] ==> The coordinates of each target
+            // target_costs = [30, 5, 10, ...] ==> The individual cost of each shot/target
+            // current_iteration = n ==> The current "tick" for the simulation
+            // WHEN n == target_costs[0] == 30:
+            //  ITERATE over unit indexes - check each for proximity to targets[0] == (10, 20)
+            //  IF a unit is caught, the index is recorded and they are removed from the game
+            // WHEN n = target_costs[1] + target_costs[0] == 30 + 5 == 35 ==> Next tick is the sum
+            //  ITERATE over unit indexes - check proximity to targets[1] == (30, 40)
+            //  IF a unit is caught, remove them
+            // WHEN n = target_costs[2] + target_costs[1] + target_costs[0] == 30+5+10 = 45
+            //  .... AND SO ON
             if target_costs[0..target_index].into_iter().sum::<usize>() == cur_tick {
                 for unit_index in 0..self.get_units().len() {
                     if self.is_in_danger(target_index, unit_index) {
                         destroyed_units_index.push(unit_index); 
                     }
                 }
-                target_index += 1; // After all units are checked, move up the target
+                if target_index < self.get_units().len() - 1 {
+                    target_index += 1; // After all units are checked, move up the target
+                }
             }
 
             // Remove units in danger. Sorting the vector, and then popping the elements prevents
