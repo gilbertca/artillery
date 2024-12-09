@@ -46,7 +46,7 @@ impl Coordinate {
     /// Returns true if the Coordinates are bounded by a circle with one of the coordinates as
     /// the center.
     pub fn contains(&self, coord2:&Coordinate, radius:f32) -> bool {
-        radius > self.distance(coord2)
+        radius >= self.distance(coord2)
     }
 }
 // Coordinate definitions END
@@ -61,7 +61,6 @@ pub struct Game {
      pub base_radius: f32,
      pub max_unit_range: f32,
      pub max_resources: f32,
-     pub cur_resources: f32,
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
      pub targets: Vec<Coordinate>,
@@ -83,9 +82,8 @@ impl Game {
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             base_radius: 1.0, // Currently arbitrary
-            max_unit_range: 2.0, // Currently arbitrary
+            max_unit_range: 5.0, // Currently arbitrary
             max_resources: 100.0, // Currently arbitrary
-            cur_resources: 100.0, // Currently arbitrary
             units: vec![],
             destinations: vec![],
             targets: vec![],
@@ -357,11 +355,12 @@ impl Game {
         target_coords.contains(unit_coords, self.target_radius)
     }
 
-    /// `shot_cost` accepts two `Coordinate`s, and returns the *resource cost* for each shot.
+    /// `shot_cost` accepts a `Coordinate`s, and returns the *resource cost* for that shot.
     ///
     /// This function does not validate that the shot lies within the map.
     ///
-    ///
+    /// If there is no previous shot, then the distance is calculated from the base coords.
+    /// If there is a previous shot, then the distance is calculated from the previous shot.
     fn shot_cost(&mut self, coord: &Coordinate) -> f32 {
         let distance;
         if self.get_targets().is_empty() {
@@ -373,7 +372,7 @@ impl Game {
         return 0.00122 * distance.powf(2.0) + 0.16 * distance + 4.83;
     }
 
-    /// `is_in_map` accepts a Coordinate and determines if that point is within the map.
+    /// `is_in_map` accepts a `Coordinate` and determines if that point is within the map.
     ///
     /// Returns true if inside the map, false if outside the map.
     fn is_in_map(&self, coord: &Coordinate) -> bool {
@@ -405,13 +404,16 @@ impl Game {
         // Calculate velocities:
         let mut velocities = vec![];
         for index in 0..self.get_units().len() {
-            velocities[index] = self.calculate_velocity(index);
+            velocities.push(self.calculate_velocity(index));
         }
 
-        // Calculate shot costs:
-        let mut shot_costs: Vec<usize> = vec![];
-        let mut target_times: Vec<usize> = vec![];
-        
+        let mut target_index = 0; // First target index
+        let mut destroyed_units_index = vec![]; // List of destroyed units by index
+        let target_costs = self.get_target_costs() // List of target costs
+            .clone()
+            .into_iter()
+            .map(|float| float.floor() as usize)
+            .collect::<Vec<_>>();
         // Iterate n = self.turn_time times to simulate a turn
         for cur_tick in 0..self.turn_time {
             // Add velocity components 
@@ -421,16 +423,34 @@ impl Game {
             }
 
             // Check if an explosion occurs; mark units in danger
-            let mut destroyed_units_index = vec![];
-            if target_times.contains(&cur_tick) {
-                for (target_index, _) in self.get_targets().clone().into_iter().enumerate() {
-                    for (unit_index, _) in self.get_units().clone().into_iter().enumerate() {
-                        if self.is_in_danger(target_index, unit_index) {
-                            destroyed_units_index.push(unit_index)
-                        }
+            // Each entry in target_costs is represented by an f32. This float represents the
+            // // resource cost for each shot. These must be rounded-down and cast as integers.
+            // // They must be integers because the game iterates over a range of integers, and we
+            // can
+            // // determine the timing of the shots by matching the two numbers.
+            // // Example:
+            // // targets = [(10, 20), (30, 40), (50, 60)] ==> The coordinates of each target
+            // // target_costs = [30, 5, 10, ...] ==> The individual cost of each shot/target
+            // // current_iteration = n ==> The current "tick" for the simulation
+            // // WHEN n == target_costs[0] == 30:
+            // //  ITERATE over units with enumerate - check each for proximity to targets[0] ==
+            // (10, 20)
+            // //  IF a unit is caught, the index is recorded and they are removed from the game
+            // // WHEN n = target_costs[1] + target_costs[0] == 30 + 5 == 35 ==> Next tick is the
+            // sum
+            // //  ITERATE over units - check proximity to targets[1] == (30, 40)
+            // //  IF a unit is caught, ....
+            // // WHEN n = target_costs[2] + target_costs[1] + target_costs[0] == 30+5+10 = 45
+            // //  .... AND SO ON
+            if target_costs[0..target_index].into_iter().sum::<usize>() == cur_tick {
+                for unit_index in 0..self.get_units().len() {
+                    if self.is_in_danger(target_index, unit_index) {
+                        destroyed_units_index.push(unit_index); 
                     }
                 }
+                target_index += 1; // After all units are checked, move up the target
             }
+
             // Remove units in danger. Sorting the vector, and then popping the elements prevents
             // side-effects caused by removing items from the list.
             destroyed_units_index.sort();
