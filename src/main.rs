@@ -10,8 +10,6 @@ fn main() {
     test_game.add_target(-20.0, 0.0);
     println!("{test_game:?}");
     let code = test_game.run_turn();
-    /// ADD ONE MORE TICK TO THE SIMULATION
-    /// REMOVE TARGETS AND THEIR COSTS
     println!("{code}");
     println!("{test_game:?}");
 }
