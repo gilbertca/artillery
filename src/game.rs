@@ -488,8 +488,15 @@ impl Game {
                 }
             }
         }
-        // If neither player has won by now, return 0 and cleanup targets:
+        // If neither player has won by now:
+        // Round positions to 2 decimal places, due to floating point errors:
+        for index in 0..self.get_units().len() {
+            self.get_units()[index].x = (self.get_units()[index].x * 100.0).round() / 100.0;
+            self.get_units()[index].y = (self.get_units()[index].y * 100.0).round() / 100.0;
+        }
+        // Clean up targets:
         self.reset_targets();
+        // Return 0 for no winners
         return 0;
     }
 // main LOOP
