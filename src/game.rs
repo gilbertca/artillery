@@ -453,14 +453,16 @@ impl Game {
             //  IF a unit is caught, remove them
             // WHEN n = target_costs[2] + target_costs[1] + target_costs[0] == 30+5+10 = 45
             //  .... AND SO ON
-            if target_costs[0..target_index].into_iter().sum::<usize>() == cur_tick {
-                for unit_index in 0..self.get_units().len() {
-                    if self.is_in_danger(target_index, unit_index) {
-                        destroyed_units_index.push(unit_index); 
+            if self.get_targets().len() != 0 { // Program will panic if there are no targets
+                if target_costs[0..target_index].into_iter().sum::<usize>() == cur_tick {
+                    for unit_index in 0..self.get_units().len() {
+                        if self.is_in_danger(target_index, unit_index) {
+                            destroyed_units_index.push(unit_index); 
+                        }
                     }
-                }
-                if target_index < self.get_units().len() - 1 {
-                    target_index += 1; // After all units are checked, move up the target
+                    if target_index < self.get_units().len() - 1 {
+                        target_index += 1; // After all units are checked, move up the target
+                    }
                 }
             }
 
