@@ -350,7 +350,6 @@ impl Game {
     /// `is_in_danger` accepts an index for a target (`target_index`) and an index for a unit
     /// (`unit_index`) and returns `true` if the unit is within the danger zone.
     fn is_in_danger(&self, target_index:usize, unit_index:usize) -> bool {
-        dbg!
         let target_coords = &self.targets[target_index];
         let unit_coords = &self.units[unit_index];
         target_coords.contains(unit_coords, self.target_radius)
