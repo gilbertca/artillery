@@ -460,7 +460,7 @@ impl Game {
                             destroyed_units_index.push(unit_index); 
                         }
                     }
-                    if target_index < self.get_units().len() - 1 {
+                    if target_index < self.get_targets().len() - 1 {
                         target_index += 1; // After all units are checked, move up the target
                     }
                 }
