@@ -1,9 +1,27 @@
-mod game;
-mod handler;
+use std::{
+    io::{prelude::*, BufReader},
+    net::{TcpListener, TcpStream},
+};
 
-// start MAIN
+mod game;
+
 fn main() {
-    let test_game = game::Game::new();
-    println!("{test_game:?}");
+	let listener = TcpListener::bind("127.0.0.1:13337").unwrap();
+
+    for stream in listener.incoming() {
+        let stream = stream.unwrap();
+
+        handle_connection(stream);
+    }
 }
-// end MAIN
+
+fn handle_connection(mut stream: TcpStream) {
+    let buf_reader = BufReader::new(&stream);
+    let http_request: Vec<_> = buf_reader
+        .lines()
+        .map(|result| result.unwrap())
+        .take_while(|line| !line.is_empty())
+        .collect();
+    println!("Request: {http_request:#?}");
+
+}
