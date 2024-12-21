@@ -2,6 +2,7 @@ use std::{
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
 };
+use serde_json::{Result, Value};
 
 mod game;
 
@@ -23,5 +24,5 @@ fn handle_connection(mut stream: TcpStream) {
         .take_while(|line| !line.is_empty())
         .collect();
     println!("Request: {http_request:#?}");
-
+    stream.write_all("HTTP/1.1 200 OK\r\nOK\r\n".as_bytes()).unwrap();
 }
