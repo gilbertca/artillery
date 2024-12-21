@@ -1,3 +1,4 @@
+#![allow(unused)] // Compiler believes that Game's methods and attributes are unused
 // Error definitions begin
 #[derive(Debug)]
 pub enum ArtilleryError {
@@ -414,7 +415,7 @@ impl Game {
     /// 4. Determine if either player has won the game.
     ///
     /// Returns 0 with no winners, 1 if the army player wins, 2 if the artillery player wins.
-    pub fn run_turn(&mut self) -> usize {
+    pub fn run_turn(&mut self) -> Result<usize, ArtilleryError> {
         // Calculate velocities:
         let mut velocities = vec![];
         for index in 0..self.get_units().len() {
@@ -470,7 +471,7 @@ impl Game {
             // side-effects caused by removing items from the list.
             destroyed_units_index.sort();
             while let Some(index) = destroyed_units_index.pop() {
-                self.remove_unit(index);
+                self.remove_unit(index)?;
                 velocities.remove(index); // Must remove associated velocity for destroyed units
             }
             
@@ -479,7 +480,7 @@ impl Game {
             // Player 2 wins if there are no units on the board
             if units.is_empty() {
                 self.reset_game();
-                return 2;
+                return Ok(2);
             }
             // Player 1 wins if there is a unit at the base
             let base_coords = self.get_base_coords().clone();
@@ -487,7 +488,7 @@ impl Game {
             for unit in self.get_units() { // Player 1 checks
                 if unit.contains(&base_coords, base_radius) {
                     self.reset_game();
-                    return 1;
+                    return Ok(1);
                 }
             }
         }
@@ -500,7 +501,7 @@ impl Game {
         // Clean up targets:
         self.reset_targets();
         // Return 0 for no winners
-        return 0;
+        return Ok(0);
     }
 // main LOOP
 }
