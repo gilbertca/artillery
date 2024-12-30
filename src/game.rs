@@ -1,4 +1,5 @@
-#![allow(unused)] // Compiler believes that Game's methods and attributes are unused
+use serde::{Serialize, Deserialize};
+#[allow(unused)] // Compiler believes that Game's methods and attributes are unused
 // Error definitions begin
 #[derive(Debug)]
 pub enum ArtilleryError {
@@ -18,7 +19,7 @@ impl ArtilleryError {
         ArtilleryError::DistanceError(error_msg)
     } 
 
-    pub fn resource_error(func_name: &str, action: &str, cost: f32) -> ArtilleryError {
+    pub fn resource_error(func_name: &str, action: &str) -> ArtilleryError {
         let error_msg = format!("{func_name} failed to {action}.");
         ArtilleryError::ResourceError(error_msg)
     }
@@ -26,7 +27,7 @@ impl ArtilleryError {
 // Error definitions END
 
 // Coordinate definitions END
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coordinate {
     pub x: f32,
     pub y: f32
@@ -136,7 +137,7 @@ impl Game {
         let temp_cost: f32 = self.get_target_costs().to_owned().into_iter().sum();
         let available_resources = self.get_max_resources() - temp_cost;
         if shot_cost > available_resources {
-            return Err(ArtilleryError::resource_error("add_target", format!("place a target. Cost: {shot_cost} Available: {available_resources}").as_str(), shot_cost));
+            return Err(ArtilleryError::resource_error("add_target", format!("place a target. Cost: {shot_cost} Available: {available_resources}").as_str()));
         }
 
         // Add the target, and add the shot cost:

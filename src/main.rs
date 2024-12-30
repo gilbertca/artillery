@@ -1,21 +1,45 @@
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use warp::Filter;
 mod game;
 
 #[tokio::main]
 async fn main() {
-    let game = game::Game::new();
+    let game = Arc::new(Mutex::new(game::Game::new()));
 
-    // Targets
-    let targets_uri = warp::path("targets"); // /targets
-    let get_targets = targets_uri.and(warp::get())
-        .and(warp::path::param::<usize>())
-        .map(|index| {
-            
-        }); // /targets/<index> - -1 returns all targets
+
 
     // Units
-    warp::serve(get_target).run(([127, 0, 0, 1], 8910)).await
+    warp::serve(get_targets).run(([127, 0, 0, 1], 8910)).await
 }
+
+mod warp_filters {
+    use super::handlers;
+    use std::sync::{Mutex, Arc};
+    use crate::game;
+    use warp::Filter;
+    
+//    // Target Endpoints
+//    let targets_uri = warp::path("targets"); // /targets
+//    let get_targets = targets_uri.and(warp::get()) // GET /targets
+//        .map({
+//            let game = game.clone();
+//            move || {
+//                warp::reply::json(&game
+//                    .lock()
+//                    .unwrap()
+//                    .get_targets()
+//                )
+//            }
+//        });
+
+    fn with_game(
+        game: 
+    ) -> impl Filter<Extract = (Game,), Error = std::convert::Infallible> + Clone {
+        warp::any().map(move || game.clone())
+    }
+}
+
+mod warp_handlers {
+
+}
+
 
