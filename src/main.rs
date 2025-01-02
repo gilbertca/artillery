@@ -14,7 +14,7 @@ async fn main() {
 mod warp_filters {
     use super::handlers;
     use std::sync::{Mutex, Arc};
-    use crate::game;
+    use crate::game::Game;
     use warp::Filter;
     
 //    // Target Endpoints
