@@ -3,43 +3,29 @@ mod game;
 
 #[tokio::main]
 async fn main() {
-    let game = Arc::new(Mutex::new(game::Game::new()));
-
-
-
-    // Units
-    warp::serve(get_targets).run(([127, 0, 0, 1], 8910)).await
 }
 
-mod warp_filters {
+mod filters {
     use super::handlers;
-    use std::sync::{Mutex, Arc};
-    use crate::game::Game;
     use warp::Filter;
-    
-//    // Target Endpoints
-//    let targets_uri = warp::path("targets"); // /targets
-//    let get_targets = targets_uri.and(warp::get()) // GET /targets
-//        .map({
-//            let game = game.clone();
-//            move || {
-//                warp::reply::json(&game
-//                    .lock()
-//                    .unwrap()
-//                    .get_targets()
-//                )
-//            }
-//        });
+    use crate::game::Game as _Game;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
+    // Making
+    type Game = Arc<Mutex<_Game>>;
+    
+    /// `with_game` is used internally to include a thread-safe reference to the game's state
     fn with_game(
-        game: 
+        game: Game
     ) -> impl Filter<Extract = (Game,), Error = std::convert::Infallible> + Clone {
         warp::any().map(move || game.clone())
     }
 }
 
-mod warp_handlers {
+mod handlers {
 
 }
+
 
 
