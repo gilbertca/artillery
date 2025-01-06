@@ -8,12 +8,7 @@ async fn main() {
 mod filters {
     use super::handlers;
     use warp::Filter;
-    use crate::game::Game as _Game;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
 
-    // Making
-    type Game = Arc<Mutex<_Game>>;
     
     /// `with_game` is used internally to include a thread-safe reference to the game's state
     fn with_game(
@@ -24,6 +19,18 @@ mod filters {
 }
 
 mod handlers {
+    use crate::game::Game as _Game;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+    use warp::http::StatusCode;
+
+    type Game = Arc<Mutex<_Game>>;
+
+    pub async fn add_target(_game: Game, x: f32, y: f32) {
+        match game.lock().await.add_target(x, y) {
+            Ok => Ok(StatusCode::
+        }
+    }
 
 }
 
