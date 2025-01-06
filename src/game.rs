@@ -7,6 +7,7 @@ pub enum ArtilleryError {
     DistanceError(String),
     ResourceError(String),
 }
+// TODO: Update error messages to use proper serialization, not the impl of debug
 
 impl ArtilleryError {
     pub fn index_error(func_name: &str, index: usize) -> ArtilleryError {
@@ -320,9 +321,8 @@ impl Game {
     /// pointer to any vector which contains coordinates.
     pub fn set_position(&mut self, index:usize, x:f32, y:f32) -> Result<(), ArtilleryError> {
         // Check if unit exists; return early if false
-        let unit = match self.get_unit(index) {
-            Err(_) => return Err(ArtilleryError::index_error("set_position", index)),
-            Ok(unit) => unit,
+        if let Err(_) = self.get_unit(index) {
+            return Err(ArtilleryError::index_error("set_position", index));
         };
 
         // Check if Coordinate falls outside of map; return early if true
@@ -405,7 +405,7 @@ impl Game {
     ///
     /// `run_turn` performs the following tasks:
     /// 1. Calculate the velocities of all units
-    /// 2. Calculate the timing of artillery fire. NOTE: requires algo for shot costs
+    /// 2. Calculate the timing of artillery fire.
     ///     - Each shot is represented by an integer 'm' within an iterable. The main loop iterates
     ///     'n' times, where n = `self.turn_time`. When n == m, an explosion occurs and units are
     ///     checked for danger.
@@ -468,11 +468,11 @@ impl Game {
                 }
             }
 
-            // Remove units in danger. Sorting the vector, and then popping the elements prevents
-            // side-effects caused by removing items from the list.
+            // Remove units in danger. Sorting the vector and then popping the elements 
+            // prevents side-effects caused by removing items from the list.
             destroyed_units_index.sort();
             while let Some(index) = destroyed_units_index.pop() {
-                self.remove_unit(index)?;
+                self.remove_unit(index).expect("destroyed_units_index MUST match Game.units at this point.");
                 velocities.remove(index); // Must remove associated velocity for destroyed units
             }
             
