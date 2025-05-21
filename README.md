@@ -13,8 +13,6 @@ This game began as a personal project to learn Rust. To ensure *separation of co
 
 # Setup
 **Dependencies**:
-serde = { version = "1.0.217", features = ["derive"] }
-
-tokio = { version = "1", features = ["full"] }
-
-warp = "0.3"
+- serde = { version = "1.0.217", features = ["derive"] }
+- tokio = { version = "1", features = ["full"] }
+- warp = "0.3"
