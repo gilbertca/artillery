@@ -9,7 +9,7 @@ This game began as a personal project to learn Rust. To ensure *separation of co
 
 2. **The Server** `main.rs` - The implementation `Game` was designed from the beginning to work within a RESTful architecture. This allows us to completely decouple the backend from the frontend. As of (2025-05-21), these features are not yet implemented.~The server is implemented using the `warp` framework. Each server currently only supports a single game, and the server doesn't bother trying to authenticate or identify users - this a feature, not a bug - the **Client** is responsible for that.~
 
-3. **The Client** - I have decided not to build or include a client in this package. This is because ~I am a bad person who doesn't finish what they start.~ I wanted to share the learning experience! You are free to play this game *any way you like*. Maybe you want a real-time hyper-realistic 3D simulation? Or maybe you wanted to chart all of the points by hand and play using `curl`? Do whatever you want! I don't care! Learn something (or don't - up to you)!
+3. **The Client** - I have decided not to build or include a client in this package because ~I'm tired~ I wanted to share the learning! Do whatever you want. Build a real-time hyper-realistic 3D simulation, or chart all of the points by hand and play using `curl`. Ideally, you and your friends have clients which enforce the rules, but I won't be there to stop you if you don't. A complete list of endpoints can be found below.
 
 # Setup
 **Dependencies**:
