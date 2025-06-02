@@ -8,6 +8,8 @@ pub enum ArtilleryError {
     ResourceError(String),
 }
 // TODO: Update error messages to use proper serialization, not the impl of debug
+// TODO: DRY errors?
+// TODO: Shouldn't be able to place units within the base with `add_unit`
 
 impl ArtilleryError {
     pub fn index_error(func_name: &str, index: usize) -> ArtilleryError {
@@ -63,6 +65,7 @@ pub struct Game {
      pub base_coords: Coordinate,
      pub base_radius: f32,
      pub max_unit_range: f32,
+     pub max_units: usize,
      pub max_resources: f32,
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
@@ -86,6 +89,7 @@ impl Game {
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             base_radius: 1.0, // Currently arbitrary
             max_unit_range: 5.0, // Currently arbitrary
+            max_units: 12, // Currently arbitrary
             max_resources: 100.0, // Currently arbitrary
             units: vec![],
             destinations: vec![],
