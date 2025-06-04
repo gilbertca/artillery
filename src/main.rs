@@ -13,8 +13,8 @@ type Game = Arc<Mutex<game::Game>>;
 /// URI paths:
 /// - /units GET -> returns a list of all units' positions in a list
 /// - /units/:index GET (index=uszize) -> returns a single unit's position at **index**
-/// - /units POST -> 
-///
+/// - /units POST -> creates a unit at position `x`, `y`, from a json payload
+/// - /units/:index DELETE (index=usize) -> deletes the unit at `index`
 #[tokio::main]
 async fn main() {
     use game::Game;
@@ -74,6 +74,17 @@ mod filters {
             .and_then(handlers::create_unit)
     }
 
+    /// DELETE /units/:index
+    pub fn delete_unit(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("units" / usize)
+            .and(warp::delete())
+            .and(with_game(game))
+            .and_then(handlers::delete_unit)
+    }
+
+
     /// `with_game` is an internal filter which clones the gamestate
     /// for each operation on an endpoint.
     fn with_game(game: Game) -> impl Filter<Extract = (Game,), Error = std::convert::Infallible> + Clone {
@@ -111,7 +122,7 @@ mod handlers {
         // {"unit": [Coordinate,]
         let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
         // Although there is only a single coordinate, wrapping it with a vector pleases the
-        // compiler.
+        // compiler since I didn't add support for None/null types.
 
         let unit = gamestate.get_unit(index);
         if let Ok(unit) = gamestate.get_unit(index) {
@@ -135,5 +146,16 @@ mod handlers {
             Ok(StatusCode::BAD_REQUEST)   
         }
     }
-}
 
+    /// `handlers::delete_unit` delets a unit at the specified `index`
+    pub async fn delete_unit(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+
+        if let Ok(_) = gamestate.remove_unit(index) {
+            Ok(StatusCode::NO_CONTENT)
+        }
+        else {
+            Ok(StatusCode::NOT_FOUND)
+        }
+    }
+}
