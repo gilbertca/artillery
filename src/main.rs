@@ -43,6 +43,12 @@ mod filters {
             .or(create_unit(game.clone()))
     }
 
+    /// *   * **   * ***** ******* ******
+    /// *   * * *  *   *      *    ** 
+    /// *   * *  * *   *      *      **
+    /// *   * *   **   *      *        **
+    /// ***** *    * *****    *    ******
+
     /// GET /units
     pub fn get_all_units(
         game: Game,
@@ -84,6 +90,14 @@ mod filters {
             .and_then(handlers::delete_unit)
     }
 
+    /// *******  *     ***** ***** ***** ******* *******
+    ///    *    * *    *   * *     *        *     **
+    ///    *   *****   ****  * *** *****    *       **
+    ///    *  *     *  *  ** *   * *        *         **
+    ///    * *       * *   * ***** *****    *    *******
+
+    /// GET /targets
+
 
     /// `with_game` is an internal filter which clones the gamestate
     /// for each operation on an endpoint.
@@ -122,7 +136,8 @@ mod handlers {
         // {"unit": [Coordinate,]
         let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
         // Although there is only a single coordinate, wrapping it with a vector pleases the
-        // compiler since I didn't add support for None/null types.
+        // compiler since I didn't add support for None/null types so the null case is an empty
+        // vector.
 
         let unit = gamestate.get_unit(index);
         if let Ok(unit) = gamestate.get_unit(index) {
