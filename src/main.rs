@@ -83,9 +83,6 @@ mod filters {
     /// `extract_coordinate_from_json` is an internal filter which parses requests as json payloads.
     fn extract_coordinate_from_json() -> impl Filter<Extract = (Coordinate,), Error = warp::Rejection> + Clone {
         warp::body::json()
-            .map(|coordinate: Coordinate|
-                coordinate
-            )
     }
 }
 
