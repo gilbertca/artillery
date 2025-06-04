@@ -30,6 +30,7 @@ mod filters {
     use warp::Filter;
     use crate::handlers;
     use crate::Game;
+    use crate::game::Coordinate;
 
 
     /// All filters combined. 
@@ -68,6 +69,7 @@ mod filters {
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         warp::path!("units")
             .and(warp::post())
+            .and(extract_coordinate_from_json())
             .and(with_game(game))
             .and_then(handlers::create_unit)
     }
@@ -76,6 +78,14 @@ mod filters {
     /// for each operation on an endpoint.
     fn with_game(game: Game) -> impl Filter<Extract = (Game,), Error = std::convert::Infallible> + Clone {
         warp::any().map(move || game.clone())
+    }
+
+    /// `extract_coordinate_from_json` is an internal filter which parses requests as json payloads.
+    fn extract_coordinate_from_json() -> impl Filter<Extract = (Coordinate,), Error = warp::Rejection> + Clone {
+        warp::body::json()
+            .map(|coordinate: Coordinate|
+                coordinate
+            )
     }
 }
 
@@ -118,14 +128,14 @@ mod handlers {
 
     /// `handlers::create_unit` creates a unit at the specified position
     /// There aren't any rules regarding unit limits; maybe that's the client's job
-    pub async fn create_unit(x: f32, y: f32, game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn create_unit(coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
-        if let Ok(_) = gamestate.add_unit(x, y) {
+        if let Ok(_) = gamestate.add_unit(coordinate.x, coordinate.y) {
             Ok(StatusCode::CREATED)
         }
         else { // Currently only fails when unit is outside map
-            
+            Ok(StatusCode::BAD_REQUEST)   
         }
     }
 }
