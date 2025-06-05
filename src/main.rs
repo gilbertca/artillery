@@ -169,18 +169,24 @@ mod handlers {
     /// `handlers::get_all_units` returns a list of all unit positions using `Game.get_units`
     pub async fn get_all_units(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {"units": [Coordinate1, ...]}
-        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
+        // {
+        //  "positions": [Coordinate1, ...],
+        //  "destinations": [Coordinate1, ...]
+        // }
+        let mut response: HashMap<&str, Vector<Coordinate>> = HashMap::new();
 
-        let units: Vec<Coordinate> = gamestate.get_units().clone();
-        response.insert("units", units);
+        response.insert("positions", gamestate.get_units().clone());
+        response.insert("destinations", gamestate.get_destinations().clone());
         Ok(warp::reply::json(&response))
     }
 
     /// `handlers::get_unit` returns a unit's position at `index` in the list using `Game.get_unit`
     pub async fn get_unit(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {"unit": [Coordinate,]
+        // {
+        //  "positions": [Coordinate1, ...],
+        //  "destinations": [Coordinate1, ...]
+        // }
         let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
         // Although there is only a single coordinate, wrapping it with a vector pleases the
         // compiler since I didn't add support for None/null types so the null case is an empty
@@ -189,6 +195,14 @@ mod handlers {
         let unit = gamestate.get_unit(index);
         if let Ok(unit) = gamestate.get_unit(index) {
             response.insert("unit", vec![unit.clone()]);
+            response.insert(
+                "destination",
+                vec![
+                    gamestate
+                    .get_destination(index)
+                    .expect(format!("If a unit exists at {index}, then a destination must exist at {index}"))
+                ]
+            );
         }
         else {
             response.insert("unit", vec![]);
