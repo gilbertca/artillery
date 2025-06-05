@@ -282,9 +282,9 @@ mod handlers {
         //  "targets": [Coordinate1, ...],
         //  "target_costs": [cost1, ...]
         // }
-        let mut response: HashMap<&str, TargetResponse> = HashMap::new();
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        response.insert("targets", JSON::Coordinate(gamestate.get_targets().clone()));
+        response.insert("targets", JSON::Coordinates(gamestate.get_targets().clone()));
         response.insert("target_costs", JSON::F32s(gamestate.get_target_costs().clone()));
         Ok(warp::reply::json(&response))
     }
@@ -301,7 +301,7 @@ mod handlers {
 
         let target = gamestate.get_target(index);
         if let Ok(target) = gamestate.get_target(index) {
-            response.insert("target", JSON::Coordinate(vec![target.clone()]));
+            response.insert("target", JSON::Coordinate(target.clone()));
             response.insert(
                 "target_cost",
                 JSON::F32(
@@ -351,7 +351,7 @@ mod handlers {
     pub async fn get_game_config(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
-        let mut response = HashMap<&str, JSON>;
+        let mut response: HashMap<&str, JSON> = HashMap::new();
         response.insert("map_radius", JSON::F32(gamestate.get_map_radius().clone()));
         response.insert("target_radius", JSON::F32(gamestate.get_target_radius().clone()));
         response.insert("base_coords", JSON::Coordinate(gamestate.get_base_coords().clone()));
