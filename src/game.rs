@@ -211,6 +211,17 @@ impl Game {
     pub fn get_units(&mut self) -> &mut Vec<Coordinate> {
         &mut self.units
     }
+    
+    /// `get_target_cost` accepts an `index` value, and returns the target cost for that target. This
+    /// cost is an `f32` value, and represents the 'cost' of the shot for a particular target.
+    ///
+    /// Returns an `IndexError` if a unit does not exist.
+    pub fn get_target_cost(&mut self, index:usize) -> Result<&f32, ArtilleryError> {
+        match self.get_target_costs().get(index) {
+            None => Err(ArtilleryError::index_error("get_target_cost", index)),
+            Some(target_cost) => Ok(target_cost)
+        }
+    }
 
     /// `get_target_costs` returns a vector of integers. Each integer represents the resource cost
     /// for each artillery shot.
