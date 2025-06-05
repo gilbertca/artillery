@@ -190,8 +190,8 @@ mod handlers {
     // This is required so that we may include different value types within our 'response' HashMaps
     #[derive(Serialize)]
     enum JSON {
-        Coordinates(Vec<Coordinate>), // Vec<Coordinate> appears several times in `Game`'s config
         Coordinate(Coordinate),
+        Coordinates(Vec<Coordinate>), // Vec<Coordinate> appears several times in `Game`'s config
         F32(f32),
         F32s(Vec<f32>), // This is so we can use the same enum for any function with a 'response'
         Usize(usize),
