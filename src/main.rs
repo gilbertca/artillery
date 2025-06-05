@@ -167,13 +167,14 @@ mod handlers {
     /// ***** *    * *****    *    ******
     
     /// `handlers::get_all_units` returns a list of all unit positions using `Game.get_units`
+    /// Also includes all unit destinations using `Game.get_destinations`
     pub async fn get_all_units(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {
         //  "positions": [Coordinate1, ...],
         //  "destinations": [Coordinate1, ...]
         // }
-        let mut response: HashMap<&str, Vector<Coordinate>> = HashMap::new();
+        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
 
         response.insert("positions", gamestate.get_units().clone());
         response.insert("destinations", gamestate.get_destinations().clone());
@@ -181,6 +182,7 @@ mod handlers {
     }
 
     /// `handlers::get_unit` returns a unit's position at `index` in the list using `Game.get_unit`
+    /// Also includes the unit's destination using `Game.get_destination`
     pub async fn get_unit(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {
@@ -199,8 +201,9 @@ mod handlers {
                 "destination",
                 vec![
                     gamestate
-                    .get_destination(index)
-                    .expect(format!("If a unit exists at {index}, then a destination must exist at {index}"))
+                        .get_destination(index)
+                        .expect(format!("If a unit exists at {}, then a destination must exist at {}", index, index).as_str())
+                        .clone()
                 ]
             );
         }
@@ -242,13 +245,17 @@ mod handlers {
     ///    * *       * *   * ***** *****    *    *******
 
     /// `handlers::get_all_targets` returns list of target positions using `Game.get_targets`
+    /// Also includes the current target costs using `Game.get_target_costs`
     pub async fn get_all_targets(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {"targets": [Coordinate1, ...]}
+        // {
+        //  "targets": [Coordinate1, ...],
+        //  "target_costs": [cost1, ...]
+        // }
         let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
 
-        let targets: Vec<Coordinate> = gamestate.get_targets().clone();
-        response.insert("targets", targets);
+        response.insert("targets", gamestate.get_targets().clone());
+        response.insert("target_costs", gamestate.get_target_costs());
         Ok(warp::reply::json(&response))
     }
 
@@ -256,7 +263,10 @@ mod handlers {
     /// `Game.get_target`
     pub async fn get_target(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {"target": [Coordinate,]
+        // {
+        //  "target": [Coordinate,],
+        //  "target_cost": [cost1,]
+        // }
         let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
         // Although there is only a single coordinate, wrapping it with a vector pleases the
         // compiler since I didn't add support for None/null types so the null case is an empty
@@ -265,6 +275,15 @@ mod handlers {
         let target = gamestate.get_target(index);
         if let Ok(target) = gamestate.get_target(index) {
             response.insert("target", vec![target.clone()]);
+            response.insert(
+                "target_cost",
+                vec![
+                    gamestate
+                        .get_target_cost(index)
+                        .expect(format!("If a target exists at {}, then a cost must exist at {}", index, index).as_str())
+                        .clone()
+                ]
+            );
         }
         else {
             response.insert("target", vec![]);
