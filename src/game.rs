@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 #[allow(unused)] // Compiler believes that Game's methods and attributes are unused
+
 // Error definitions begin
 #[derive(Debug)]
 pub enum ArtilleryError {
@@ -168,16 +169,21 @@ impl Game {
         }
     }
 
-    /// `remove_target` accepts an `index` value, and removes the corresponding target from the
-    /// game.
+    /// `remove_target` removes the last created `target` from `self.targets`, and the associated
+    /// shot cost from `self.target_costs`.
     ///
-    /// NOTE: must remove a resource cost
-    pub fn remove_target(&mut self, index:usize) -> Result<(), ArtilleryError> {
+    /// Removing by index could be very complex in some cases becauses target costs are dependent
+    /// on the distance from the base/previous target. To keep it simple, we only allow popping
+    /// these elements from their vectors.
+    ///
+    /// Returns an `IndexError` if there are no targets to pop.
+    pub fn remove_newest_target(&mut self) -> Result<(), ArtilleryError> {
         let targets = self.get_targets();
-        match targets.get(index) {
-            None => Err(ArtilleryError::index_error("remove_target", index)),
+        match targets.get(0) { // Check index 0 for a target to pop
+            None => Err(ArtilleryError::index_error("remove_target", 0)),
             Some(_) => {
-                targets.remove(index);
+                let _ = targets.pop();
+                let _ = self.get_target_costs().pop();
                 Ok(())
             }
         }

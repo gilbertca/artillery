@@ -138,7 +138,7 @@ mod filters {
         warp::path!("targets" / usize)
             .and(warp::delete())
             .and(with_game(game))
-            .and_then(handlers::delete_target)
+            .and_then(handlers::delete_newest_target)
     }
 
 
@@ -261,10 +261,10 @@ mod handlers {
     }
 
     /// `handlers::delete_target` deletes a target at the specified `index`
-    pub async fn delete_target(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn delete_newest_target(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
-        if let Ok(_) = gamestate.remove_target(index) {
+        if let Ok(_) = gamestate.remove_newest_target() {
             Ok(StatusCode::NO_CONTENT)
         }
         else {
