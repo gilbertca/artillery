@@ -47,6 +47,12 @@ mod filters {
         get_all_units(game.clone())
             .or(get_unit(game.clone()))
             .or(create_unit(game.clone()))
+            .or(delete_unit(game.clone()))
+            .or(get_all_targets(game.clone()))
+            .or(get_target(game.clone()))
+            .or(create_target(game.clone()))
+            .or(delete_target(game.clone()))
+            .or(get_game_config(game.clone()))
     }
 
     /// *   * **   * ***** ******* ******
@@ -134,13 +140,13 @@ mod filters {
     }
 
     /// DELETE /targets
-    pub fn delete_newest_target(
+    pub fn delete_target(
         game: Game,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         warp::path!("targets")
             .and(warp::delete())
             .and(with_game(game))
-            .and_then(handlers::delete_newest_target)
+            .and_then(handlers::delete_target)
     }
 
     /// ****** ******* *    * ***** ***** *******
@@ -153,7 +159,7 @@ mod filters {
     pub fn get_game_config(
         game: Game,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        warp::path!("game/settings")
+        warp::path!("game")
             .and(warp::get())
             .and(with_game(game))
             .and_then(handlers::get_game_config)
@@ -329,8 +335,8 @@ mod handlers {
         }
     }
 
-    /// `handlers::delete_newest_target` deletes the newest target using `Game.remove_newest_target`
-    pub async fn delete_newest_target(game: Game) -> Result<impl warp::Reply, Infallible> {
+    /// `handlers::delete_target` deletes the newest target using `Game.remove_newest_target`
+    pub async fn delete_target(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
         if let Ok(_) = gamestate.remove_newest_target() {
