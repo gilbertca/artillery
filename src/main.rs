@@ -131,11 +131,11 @@ mod filters {
             .and_then(handlers::create_target)
     }
 
-    /// DELETE /targets/:index
-    pub fn delete_target(
+    /// DELETE /targets
+    pub fn delete_newest_target(
         game: Game,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        warp::path!("targets" / usize)
+        warp::path!("targets")
             .and(warp::delete())
             .and(with_game(game))
             .and_then(handlers::delete_newest_target)
@@ -261,7 +261,7 @@ mod handlers {
     }
 
     /// `handlers::delete_target` deletes a target at the specified `index`
-    pub async fn delete_newest_target(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn delete_newest_target(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
         if let Ok(_) = gamestate.remove_newest_target() {
