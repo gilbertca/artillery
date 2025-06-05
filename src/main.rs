@@ -317,8 +317,7 @@ mod handlers {
         }
     }
 
-    /// `handlers::delete_target` deletes a target at the specified `index` using
-    /// `Game.remove_newest_target`
+    /// `handlers::delete_newest_target` deletes the newest target using `Game.remove_newest_target`
     pub async fn delete_newest_target(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
