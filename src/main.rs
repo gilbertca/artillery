@@ -156,9 +156,18 @@ mod filters {
 mod handlers {
     use std::convert::Infallible;
     use std::collections::HashMap;
+    use serde::Serialize;
     use crate::Game;
     use crate::game::{ArtilleryError, Coordinate};
     use warp::http::StatusCode;
+
+    // This is required so that we may include float values and coordinate values
+    // in the same HashMap within get_target* functions.
+    #[derive(Serialize)]
+    enum TargetResponse {
+        Coordinate(Vec<Coordinate>),
+        Float32(Vec<f32>),
+    }
 
     /// *   * **   * ***** ******* ******
     /// *   * * *  *   *      *    **
@@ -252,10 +261,10 @@ mod handlers {
         //  "targets": [Coordinate1, ...],
         //  "target_costs": [cost1, ...]
         // }
-        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
+        let mut response: HashMap<&str, TargetResponse> = HashMap::new();
 
-        response.insert("targets", gamestate.get_targets().clone());
-        response.insert("target_costs", gamestate.get_target_costs());
+        response.insert("targets", TargetResponse::Coordinate(gamestate.get_targets().clone()));
+        response.insert("target_costs", TargetResponse::Float32(gamestate.get_target_costs().clone()));
         Ok(warp::reply::json(&response))
     }
 
@@ -267,26 +276,29 @@ mod handlers {
         //  "target": [Coordinate,],
         //  "target_cost": [cost1,]
         // }
-        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
+        let mut response: HashMap<&str, TargetResponse> = HashMap::new();
         // Although there is only a single coordinate, wrapping it with a vector pleases the
         // compiler since I didn't add support for None/null types so the null case is an empty
         // vector.
 
         let target = gamestate.get_target(index);
         if let Ok(target) = gamestate.get_target(index) {
-            response.insert("target", vec![target.clone()]);
+            response.insert("target", TargetResponse::Coordinate(vec![target.clone()]));
             response.insert(
                 "target_cost",
-                vec![
-                    gamestate
+                TargetResponse::Float32(
+                    vec![
+                        gamestate
                         .get_target_cost(index)
                         .expect(format!("If a target exists at {}, then a cost must exist at {}", index, index).as_str())
                         .clone()
-                ]
+                    ]
+                )
             );
         }
         else {
-            response.insert("target", vec![]);
+            response.insert("target", TargetResponse::Coordinate(vec![]));
+            response.insert("target_cost", TargetResponse::Float32(vec![]));
         }
         Ok(warp::reply::json(&response))
     }
