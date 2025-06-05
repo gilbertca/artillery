@@ -1,7 +1,8 @@
 use serde::{Serialize, Deserialize};
 #[allow(unused)] // Compiler believes that Game's methods and attributes are unused
+                 // TODO: HIDING UNUSED, DEAD, OLD ETC. WARNINGS
 
-// Error definitions begin
+// Error definitions BEGIN
 #[derive(Debug)]
 pub enum ArtilleryError {
     IndexError(String),
@@ -29,8 +30,8 @@ impl ArtilleryError {
     }
 }
 // Error definitions END
-
-// Coordinate definitions END
+//
+// Coordinate definitions BEGIN
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coordinate {
     pub x: f32,
@@ -56,7 +57,7 @@ impl Coordinate {
     }
 }
 // Coordinate definitions END
-
+//
 // Game definitions BEGIN
 #[derive(Debug)]
 pub struct Game {
@@ -98,7 +99,8 @@ impl Game {
             target_costs: vec![],
         }
     }
-
+// Game definitions END
+// 
 // adders BEGIN
     /// `add_unit` accepts an `x` value and a `y` value as floats, and creates a unit at that location.
     ///
@@ -152,7 +154,7 @@ impl Game {
         Ok(())
     }
 // adders END
-
+//
 // removers BEGIN
     /// `remove_unit` accepts an `index` value, and removes the corresponding unit from the game.
     ///
@@ -189,7 +191,7 @@ impl Game {
         }
     }
 // removers END
-
+//
 // getters BEGIN
     /// `get_unit` accepts an `index` value, and returns the Coordinate for that unit. This
     /// `Coordinate` represents a unit's current position.
@@ -292,7 +294,7 @@ impl Game {
         self.max_resources
     }
 // getters END
-
+//
 // setters BEGIN
     /// `set_destination` accepts an `index`, `x`, and `y`, value, and updates the corresponding
     /// destination contained in `self.destinations`.
@@ -345,6 +347,7 @@ impl Game {
         Ok(())
     }
 // setters END
+//
 // helpers BEGIN
     /// Returns a tuple of floats representing the `x` and `y` components of a unit's velocity.
     ///
@@ -404,6 +407,7 @@ impl Game {
         *self = Game::new();
     }
 // helpers END
+//
 // main LOOP
     /// `run_turn` simulates a turn once all destinations / targets have been accepted. This
     /// function does not perform **any** validation. It is assumed that **all* input has 
