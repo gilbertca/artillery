@@ -19,7 +19,8 @@ type Game = Arc<Mutex<game::Game>>;
 /// - /targets:index GET (index=usize) -> returns a single target's position at `index`
 /// - /targets POST -> creates a target at position `x`, `y`, from a json payload
 /// - /targets DELETE -> deletes the newest target
-/// - /game/settings GET ->  returns the currently defined configuration for the game
+/// - /game GET ->  returns the currently defined configuration for the game
+/// - /game POST -> TODO: `Game` needs to maintain the GAMEOVER state, rather than resetting at end
 /// - /game/settings/ TODO: UPDATING GAME SETTINGS?
 #[tokio::main]
 async fn main() {
