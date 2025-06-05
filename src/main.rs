@@ -12,9 +12,13 @@ type Game = Arc<Mutex<game::Game>>;
 /// All paths either return or accept JSON objects.
 /// URI paths:
 /// - /units GET -> returns a list of all units' positions in a list
-/// - /units/:index GET (index=uszize) -> returns a single unit's position at **index**
+/// - /units/:index GET (index=usize) -> returns a single unit's position at `index`
 /// - /units POST -> creates a unit at position `x`, `y`, from a json payload
 /// - /units/:index DELETE (index=usize) -> deletes the unit at `index`
+/// - /targets GET -> returns a list of all targets' positions in a list
+/// - /targets:index GET (index=usize) -> returns a single target's position at `index`
+/// - /targets POST -> creates a target at position `x`, `y`, from a json payload
+/// - /targets/:index DELETE (index=usize) -> deletes the target at `index`
 #[tokio::main]
 async fn main() {
     use game::Game;
@@ -97,6 +101,45 @@ mod filters {
     ///    * *       * *   * ***** *****    *    *******
 
     /// GET /targets
+    pub fn get_all_targets(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("targets")
+            .and(warp::get())
+            .and(with_game(game))
+            .and_then(handlers::get_all_targets)
+    }
+
+    /// GET /targets/:index
+    pub fn get_target(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("targets" / usize)
+            .and(warp::get())
+            .and(with_game(game))
+            .and_then(handlers::get_target)
+    }
+
+    /// POST /targets
+    pub fn create_target(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("targets")
+            .and(warp::post())
+            .and(extract_coordinate_from_json())
+            .and(with_game(game))
+            .and_then(handlers::create_target)
+    }
+
+    /// DELETE /targets/:index
+    pub fn delete_target(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("targets" / usize)
+            .and(warp::delete())
+            .and(with_game(game))
+            .and_then(handlers::delete_target)
+    }
 
 
     /// `with_game` is an internal filter which clones the gamestate
@@ -162,11 +205,66 @@ mod handlers {
         }
     }
 
-    /// `handlers::delete_unit` delets a unit at the specified `index`
+    /// `handlers::delete_unit` deletes a unit at the specified `index`
     pub async fn delete_unit(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
         if let Ok(_) = gamestate.remove_unit(index) {
+            Ok(StatusCode::NO_CONTENT)
+        }
+        else {
+            Ok(StatusCode::NOT_FOUND)
+        }
+    }
+
+    /// `handlers::get_all_targets` returns list of target positions
+    pub async fn get_all_targets(mut game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+        // {"targets": [Coordinate1, ...]}
+        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
+
+        let targets: Vec<Coordinate> = gamestate.get_targets().clone();
+        response.insert("targets", targets);
+        Ok(warp::reply::json(&response))
+    }
+
+    /// `handlers::get_target` returns a target's position at `index` in the list
+    pub async fn get_target(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+        // {"target": [Coordinate,]
+        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
+        // Although there is only a single coordinate, wrapping it with a vector pleases the
+        // compiler since I didn't add support for None/null types so the null case is an empty
+        // vector.
+
+        let target = gamestate.get_target(index);
+        if let Ok(target) = gamestate.get_target(index) {
+            response.insert("target", vec![target.clone()]);
+        }
+        else {
+            response.insert("target", vec![]);
+        }
+        Ok(warp::reply::json(&response))
+    }
+
+    /// `handlers::create_target` creates a target at the specified position
+    pub async fn create_target(coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+
+        if let Ok(_) = gamestate.add_target(coordinate.x, coordinate.y) {
+            Ok(StatusCode::CREATED)
+        }
+        // TODO: INTERPRET THE ARTILLERYERRORS
+        else {
+            Ok(StatusCode::BAD_REQUEST)   
+        }
+    }
+
+    /// `handlers::delete_target` deletes a target at the specified `index`
+    pub async fn delete_target(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+
+        if let Ok(_) = gamestate.remove_target(index) {
             Ok(StatusCode::NO_CONTENT)
         }
         else {
