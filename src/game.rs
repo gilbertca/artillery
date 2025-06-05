@@ -67,7 +67,6 @@ pub struct Game {
      pub base_coords: Coordinate,
      pub base_radius: f32,
      pub max_unit_range: f32,
-     pub max_units: usize,
      pub max_resources: f32,
      pub units: Vec<Coordinate>,
      pub destinations: Vec<Coordinate>,
@@ -91,7 +90,6 @@ impl Game {
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             base_radius: 1.0, // Currently arbitrary
             max_unit_range: 5.0, // Currently arbitrary
-            max_units: 12, // Currently arbitrary
             max_resources: 100.0, // Currently arbitrary
             units: vec![],
             destinations: vec![],
@@ -304,6 +302,13 @@ impl Game {
     pub fn get_max_resources(&self) -> f32 {
         self.max_resources
     }
+
+    /// `get_target_radius` returns the radius for each target for the artillery player.
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct changes.
+    pub fn get_target_radius(&self) -> f32 {
+        self.target_radius
+    }
 // getters END
 //
 // setters BEGIN
@@ -377,7 +382,7 @@ impl Game {
     fn is_in_danger(&self, target_index:usize, unit_index:usize) -> bool {
         let target_coords = &self.targets[target_index];
         let unit_coords = &self.units[unit_index];
-        target_coords.contains(unit_coords, self.target_radius)
+        target_coords.contains(unit_coords, self.get_target_radius())
     }
 
     /// `shot_cost` accepts a `Coordinate`, and returns the *resource cost* for that shot.

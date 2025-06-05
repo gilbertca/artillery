@@ -18,7 +18,9 @@ type Game = Arc<Mutex<game::Game>>;
 /// - /targets GET -> returns a list of all targets' positions in a list
 /// - /targets:index GET (index=usize) -> returns a single target's position at `index`
 /// - /targets POST -> creates a target at position `x`, `y`, from a json payload
-/// - /targets/:index DELETE (index=usize) -> deletes the target at `index`
+/// - /targets DELETE -> deletes the newest target
+/// - /game/settings GET ->  returns the currently defined configuration for the game
+/// - /game/settings/ TODO: UPDATING GAME SETTINGS?
 #[tokio::main]
 async fn main() {
     use game::Game;
@@ -141,6 +143,22 @@ mod filters {
             .and_then(handlers::delete_newest_target)
     }
 
+    /// ****** ******* *    * ***** ***** *******
+    /// *    *    *    *    * *     *   *  **    
+    /// *    *    *    ****** ***** ****     **  
+    /// *    *    *    *    * *     *  **      **
+    /// ******    *    *    * ***** *   * *******
+
+    /// GET /game
+    pub fn get_game_config(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("game/settings")
+            .and(warp::get())
+            .and(with_game(game))
+            .and_then(handlers::get_game_config)
+    }
+
     /// `with_game` is an internal filter which clones the gamestate
     /// for each operation on an endpoint.
     fn with_game(game: Game) -> impl Filter<Extract = (Game,), Error = std::convert::Infallible> + Clone {
@@ -151,6 +169,8 @@ mod filters {
     fn extract_coordinate_from_json() -> impl Filter<Extract = (Coordinate,), Error = warp::Rejection> + Clone {
         warp::body::json()
     }
+
+
 }
 
 mod handlers {
@@ -161,12 +181,15 @@ mod handlers {
     use crate::game::{ArtilleryError, Coordinate};
     use warp::http::StatusCode;
 
-    // This is required so that we may include float values and coordinate values
-    // in the same HashMap within get_target* functions.
+    // This is required so that we may include different value types within our 'response' HashMaps
     #[derive(Serialize)]
-    enum TargetResponse {
-        Coordinate(Vec<Coordinate>),
-        Float32(Vec<f32>),
+    enum JSON {
+        Coordinates(Vec<Coordinate>), // Vec<Coordinate> appears several times in `Game`'s config
+        Coordinate(Coordinate),
+        F32(f32),
+        F32s(Vec<f32>), // This is so we can use the same enum for any function with a 'response'
+        Usize(usize),
+        Usizes(Vec<usize>), // This is so we can use the same enum for any function with a 'response' 
     }
 
     /// *   * **   * ***** ******* ******
@@ -183,10 +206,12 @@ mod handlers {
         //  "positions": [Coordinate1, ...],
         //  "destinations": [Coordinate1, ...]
         // }
-        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        response.insert("positions", gamestate.get_units().clone());
-        response.insert("destinations", gamestate.get_destinations().clone());
+        response.insert("positions",
+                        JSON::Coordinates(gamestate.get_units().clone()));
+        response.insert("destinations",
+                        JSON::Coordinates(gamestate.get_destinations().clone()));
         Ok(warp::reply::json(&response))
     }
 
@@ -195,31 +220,26 @@ mod handlers {
     pub async fn get_unit(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {
-        //  "positions": [Coordinate1, ...],
-        //  "destinations": [Coordinate1, ...]
+        //  "position": Coordinate1,
+        //  "destination": Coordinate1
         // }
-        let mut response: HashMap<&str, Vec<Coordinate>> = HashMap::new();
-        // Although there is only a single coordinate, wrapping it with a vector pleases the
-        // compiler since I didn't add support for None/null types so the null case is an empty
-        // vector.
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
         let unit = gamestate.get_unit(index);
         if let Ok(unit) = gamestate.get_unit(index) {
-            response.insert("unit", vec![unit.clone()]);
+            response.insert("position",
+                            JSON::Coordinate(unit.clone()));
             response.insert(
                 "destination",
-                vec![
+                JSON::Coordinate(
                     gamestate
-                        .get_destination(index)
-                        .expect(format!("If a unit exists at {}, then a destination must exist at {}", index, index).as_str())
-                        .clone()
-                ]
+                    .get_destination(index)
+                    .expect(format!("If a unit exists at {}, then a destination must exist at {}", index, index).as_str())
+                    .clone()
+                ),
             );
         }
-        else {
-            response.insert("unit", vec![]);
-        }
-        Ok(warp::reply::json(&response))
+       Ok(warp::reply::json(&response))
     }
 
     /// `handlers::create_unit` creates a unit at the specified position using `Game.add_unit`
@@ -231,7 +251,8 @@ mod handlers {
             Ok(StatusCode::CREATED)
         }
         else { // Currently only fails when unit is outside map
-            Ok(StatusCode::BAD_REQUEST)   
+               // TODO: OUGHT TO FAIL WHEN A UNIT IS PLACED ON THE BASE
+            Ok(StatusCode::BAD_REQUEST)
         }
     }
 
@@ -263,8 +284,8 @@ mod handlers {
         // }
         let mut response: HashMap<&str, TargetResponse> = HashMap::new();
 
-        response.insert("targets", TargetResponse::Coordinate(gamestate.get_targets().clone()));
-        response.insert("target_costs", TargetResponse::Float32(gamestate.get_target_costs().clone()));
+        response.insert("targets", JSON::Coordinate(gamestate.get_targets().clone()));
+        response.insert("target_costs", JSON::F32s(gamestate.get_target_costs().clone()));
         Ok(warp::reply::json(&response))
     }
 
@@ -273,32 +294,23 @@ mod handlers {
     pub async fn get_target(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {
-        //  "target": [Coordinate,],
-        //  "target_cost": [cost1,]
+        //  "target": Coordinate,
+        //  "target_cost": cost1
         // }
-        let mut response: HashMap<&str, TargetResponse> = HashMap::new();
-        // Although there is only a single coordinate, wrapping it with a vector pleases the
-        // compiler since I didn't add support for None/null types so the null case is an empty
-        // vector.
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
         let target = gamestate.get_target(index);
         if let Ok(target) = gamestate.get_target(index) {
-            response.insert("target", TargetResponse::Coordinate(vec![target.clone()]));
+            response.insert("target", JSON::Coordinate(vec![target.clone()]));
             response.insert(
                 "target_cost",
-                TargetResponse::Float32(
-                    vec![
+                JSON::F32(
                         gamestate
                         .get_target_cost(index)
                         .expect(format!("If a target exists at {}, then a cost must exist at {}", index, index).as_str())
                         .clone()
-                    ]
                 )
             );
-        }
-        else {
-            response.insert("target", TargetResponse::Coordinate(vec![]));
-            response.insert("target_cost", TargetResponse::Float32(vec![]));
         }
         Ok(warp::reply::json(&response))
     }
@@ -327,5 +339,26 @@ mod handlers {
         else {
             Ok(StatusCode::NOT_FOUND)
         }
+    }
+
+    /// ****** ******* *    * ***** ***** *******
+    /// *    *    *    *    * *     *   *  **    
+    /// *    *    *    ****** ***** ****     **
+    /// *    *    *    *    * *     *  **      **
+    /// ******    *    *    * ***** *   * *******
+    
+    /// `handlers::get_game_config` returns all of 'settings' for the currently running `Game`
+    pub async fn get_game_config(game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+
+        let mut response = HashMap<&str, JSON>;
+        response.insert("map_radius", JSON::F32(gamestate.get_map_radius().clone()));
+        response.insert("target_radius", JSON::F32(gamestate.get_target_radius().clone()));
+        response.insert("base_coords", JSON::Coordinate(gamestate.get_base_coords().clone()));
+        response.insert("base_radius", JSON::F32(gamestate.get_base_radius().clone()));
+        response.insert("max_unit_range", JSON::F32(gamestate.get_max_unit_range().clone()));
+        response.insert("max_resources", JSON::F32(gamestate.get_max_resources().clone()));
+
+        Ok(warp::reply::json(&response))
     }
 }
