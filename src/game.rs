@@ -310,8 +310,7 @@ impl Game {
         }
 
         // Checks complete
-        let destinations = self.get_destinations();
-        destinations[index] = temp_coord;
+        self.get_destinations()[index] = temp_coord;
         Ok(())
     }
 
@@ -341,9 +340,9 @@ impl Game {
     }
 // setters END
 // helpers BEGIN
-    /// Returns a tuple of floats representing the x and x components of a unit's velocity.
+    /// Returns a tuple of floats representing the `x` and `y` components of a unit's velocity.
     ///
-    /// For every iteration of `turn_time`, these values are added/subtracted from a unit's x and y components to represent movement.
+    /// For every iteration of `turn_time`, these values are added/subtracted from a unit's `x` and `y` components to represent movement.
     ///
     /// These values are dependent on `self.turn_time`. Larger values for `turn_time` represent
     /// more steps/increments per turn, which results in smaller velocity components.
@@ -361,7 +360,7 @@ impl Game {
         target_coords.contains(unit_coords, self.target_radius)
     }
 
-    /// `shot_cost` accepts a `Coordinate`s, and returns the *resource cost* for that shot.
+    /// `shot_cost` accepts a `Coordinate`, and returns the *resource cost* for that shot.
     ///
     /// This function does not validate that the shot lies within the map.
     ///
@@ -411,7 +410,7 @@ impl Game {
     /// 1. Calculate the velocities of all units
     /// 2. Calculate the timing of artillery fire.
     ///     - Each shot is represented by an integer 'm' within an iterable. The main loop iterates
-    ///     'n' times, where n = `self.turn_time`. When n == m, an explosion occurs and units are
+    ///     'n' times, where n = `self.turn_time`. When `n == m`, an explosion occurs and units are
     ///     checked for danger.
     /// 3. Iterate over each 'tick' set by `self.turn_time`. Each iteration:
     ///     1. Add velocity to each unit's coordinates to determine new position
@@ -432,7 +431,7 @@ impl Game {
         let target_costs = self.get_target_costs() // List of target costs
             .clone()
             .into_iter()
-            .map(|float| float.floor() as usize)
+            .map(|target_cost_as_float| target_cost_as_float.floor() as usize)
             .collect::<Vec<_>>();
         // Iterate n = self.turn_time times to simulate a turn
         for cur_tick in 0..self.turn_time {
@@ -459,7 +458,7 @@ impl Game {
             //  IF a unit is caught, remove them
             // WHEN n = target_costs[2] + target_costs[1] + target_costs[0] == 30+5+10 = 45
             //  .... AND SO ON
-            if self.get_targets().len() != 0 { // Program will panic if there are no targets
+            if self.get_targets().len() != 0 { // Check to prevent panic if there are no targets
                 if target_costs[0..target_index].into_iter().sum::<usize>() == cur_tick {
                     for unit_index in 0..self.get_units().len() {
                         if self.is_in_danger(target_index, unit_index) {
@@ -481,9 +480,8 @@ impl Game {
             }
             
             // Check if either player has won:
-            let units = self.get_units();
             // Player 2 wins if there are no units on the board
-            if units.is_empty() {
+            if self.get_units().is_empty() {
                 self.reset_game();
                 return Ok(2);
             }
