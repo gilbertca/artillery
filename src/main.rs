@@ -141,7 +141,6 @@ mod filters {
             .and_then(handlers::delete_newest_target)
     }
 
-
     /// `with_game` is an internal filter which clones the gamestate
     /// for each operation on an endpoint.
     fn with_game(game: Game) -> impl Filter<Extract = (Game,), Error = std::convert::Infallible> + Clone {
@@ -161,8 +160,13 @@ mod handlers {
     use crate::game::{ArtilleryError, Coordinate};
     use warp::http::StatusCode;
 
+    /// *   * **   * ***** ******* ******
+    /// *   * * *  *   *      *    **
+    /// *   * *  * *   *      *      **
+    /// *   * *   **   *      *        **
+    /// ***** *    * *****    *    ******
     
-    /// `handlers::get_all_units` returns a list of all unit positions
+    /// `handlers::get_all_units` returns a list of all unit positions using `Game.get_units`
     pub async fn get_all_units(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {"units": [Coordinate1, ...]}
@@ -173,7 +177,7 @@ mod handlers {
         Ok(warp::reply::json(&response))
     }
 
-    /// `handlers::get_unit` returns a unit's position at `index` in the list
+    /// `handlers::get_unit` returns a unit's position at `index` in the list using `Game.get_unit`
     pub async fn get_unit(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {"unit": [Coordinate,]
@@ -192,7 +196,7 @@ mod handlers {
         Ok(warp::reply::json(&response))
     }
 
-    /// `handlers::create_unit` creates a unit at the specified position
+    /// `handlers::create_unit` creates a unit at the specified position using `Game.add_unit`
     /// There aren't any rules regarding unit limits; maybe that's the client's job
     pub async fn create_unit(coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
@@ -205,7 +209,7 @@ mod handlers {
         }
     }
 
-    /// `handlers::delete_unit` deletes a unit at the specified `index`
+    /// `handlers::delete_unit` deletes a unit at the specified `index` using `Game.remove_unit`
     pub async fn delete_unit(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
@@ -217,7 +221,13 @@ mod handlers {
         }
     }
 
-    /// `handlers::get_all_targets` returns list of target positions
+    /// *******  *     ***** ***** ***** ******* *******
+    ///    *    * *    *   * *     *        *     **
+    ///    *   *****   ****  * *** *****    *       **
+    ///    *  *     *  *  ** *   * *        *         **
+    ///    * *       * *   * ***** *****    *    *******
+
+    /// `handlers::get_all_targets` returns list of target positions using `Game.get_targets`
     pub async fn get_all_targets(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {"targets": [Coordinate1, ...]}
@@ -228,7 +238,8 @@ mod handlers {
         Ok(warp::reply::json(&response))
     }
 
-    /// `handlers::get_target` returns a target's position at `index` in the list
+    /// `handlers::get_target` returns a target's position at `index` in the list using
+    /// `Game.get_target`
     pub async fn get_target(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         // {"target": [Coordinate,]
@@ -247,7 +258,8 @@ mod handlers {
         Ok(warp::reply::json(&response))
     }
 
-    /// `handlers::create_target` creates a target at the specified position
+    /// `handlers::create_target` creates a target at the specified position using
+    /// `Game.add_target`
     pub async fn create_target(coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
@@ -260,7 +272,8 @@ mod handlers {
         }
     }
 
-    /// `handlers::delete_target` deletes a target at the specified `index`
+    /// `handlers::delete_target` deletes a target at the specified `index` using
+    /// `Game.remove_newest_target`
     pub async fn delete_newest_target(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
