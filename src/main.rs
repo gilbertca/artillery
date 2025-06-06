@@ -9,6 +9,7 @@ type Game = Arc<Mutex<game::Game>>;
 ///
 /// Running this will start a `warp` server on port 10707.
 /// TODO: ArtilleryErrors are serializable, and can be included in `response` HashMaps
+/// TODO: WE CAN RETURN TUPLES RATHER THAN JSON ENUMS WITHIN `handlers`
 ///
 /// All paths either return or accept JSON objects.
 /// URI paths:
@@ -31,6 +32,11 @@ async fn main() {
     use filters::all_filters;
 
     let mut game = Arc::new(Mutex::new(Game::new()));
+    {
+    let mut unlocked = game.lock().await;
+    unlocked.add_unit(20.0, 20.0);
+    unlocked.set_destination(0, 18.0, 18.0);
+    }
 
     let api = all_filters(game);
     warp::serve(api).run(([127, 0, 0, 1], 10707)).await;
@@ -52,6 +58,7 @@ mod filters {
             .or(get_unit(game.clone()))
             .or(create_unit(game.clone()))
             .or(delete_unit(game.clone()))
+            .or(set_destination(game.clone()))
             .or(get_all_targets(game.clone()))
             .or(get_target(game.clone()))
             .or(create_target(game.clone()))
@@ -96,6 +103,18 @@ mod filters {
             .and(with_game(game))
             .and_then(handlers::create_unit)
     }
+
+    /// POST /units/:index
+    pub fn set_destination(
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("units" / usize)
+            .and(warp::post())
+            .and(extract_coordinate_from_json())
+            .and(with_game(game))
+            .and_then(handlers::set_destination)
+    }
+
 
     /// DELETE /units/:index
     pub fn delete_unit(
@@ -171,7 +190,7 @@ mod filters {
     }
     
     /// POST /game/run
-    pub fn run_turn
+    pub fn run_turn(
         game: Game,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         warp::path!("game" / "run")
@@ -291,6 +310,20 @@ mod handlers {
         }
     }
 
+    /// `handlers::set_destination` sets a unit's destination at a particular `index`
+    pub async fn set_destination(index: usize, coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+        //let mut response: HashMap<&str, JSON> = HashMap::new(); // unused
+
+        if let Ok(_) = gamestate.set_destination(index, coordinate.x, coordinate.y) {
+            Ok(StatusCode::CREATED)
+        }
+        else {
+            Ok(StatusCode::BAD_REQUEST)
+        }
+    }
+
+
     /// *******  *     ***** ***** ***** ******* *******
     ///    *    * *    *   * *     *        *     **
     ///    *   *****   ****  * *** *****    *       **
@@ -388,11 +421,11 @@ mod handlers {
     pub async fn run_turn(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
 
-        if Ok(_) = gamestate.run_turn() {
-            Ok(StatusCode::)
-        } // TODO: FIGURE OUT THE CORRECT STATUS CODES HERE.
+        if let Ok(_) = gamestate.run_turn() {
+            Ok(StatusCode::RESET_CONTENT)
+        }
         else {
-            Ok(StatusCode::)
+            panic!("`Game::run_turn` has returned an error to `handler::run_turn`");
         }
 
     }
