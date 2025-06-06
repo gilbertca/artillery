@@ -21,7 +21,9 @@ type Game = Arc<Mutex<game::Game>>;
 /// - /targets POST -> creates a target at position `x`, `y`, from a json payload
 /// - /targets DELETE -> deletes the newest target
 /// - /game GET ->  returns the currently defined configuration for the game
-/// - /game POST -> TODO: `Game` needs to maintain the GAMEOVER state, rather than resetting at end
+/// - /game/run POST -> runs the simulation using `Game.run_turn`
+/// TODO: both players must run the game, so the server needs to track the connections or name in
+/// some way. perhaps all functions could simply accept a name to validate.
 /// - /game/settings/ TODO: UPDATING GAME SETTINGS?
 #[tokio::main]
 async fn main() {
@@ -55,6 +57,7 @@ mod filters {
             .or(create_target(game.clone()))
             .or(delete_target(game.clone()))
             .or(get_game_config(game.clone()))
+            .or(run_turn(game.clone()))
     }
 
     /// *   * **   * ***** ******* ******
@@ -165,6 +168,17 @@ mod filters {
             .and(warp::get())
             .and(with_game(game))
             .and_then(handlers::get_game_config)
+    }
+    
+    /// POST /game/run
+    pub fn run_turn
+        game: Game,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::path!("game" / "run")
+            .and(warp::post())
+            .and(with_game(game))
+            // TODO: what values do we need to extract for running the turn?
+            .and_then(handlers::run_turn)
     }
 
     /// `with_game` is an internal filter which clones the gamestate
@@ -369,5 +383,17 @@ mod handlers {
         response.insert("max_resources", JSON::F32(gamestate.get_max_resources().clone()));
 
         Ok(warp::reply::json(&response))
+    }
+
+    pub async fn run_turn(game: Game) -> Result<impl warp::Reply, Infallible> {
+        let mut gamestate = game.lock().await;
+
+        if Ok(_) = gamestate.run_turn() {
+            Ok(StatusCode::)
+        } // TODO: FIGURE OUT THE CORRECT STATUS CODES HERE.
+        else {
+            Ok(StatusCode::)
+        }
+
     }
 }
