@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
                  // TODO: HIDING UNUSED, DEAD, OLD ETC. WARNINGS
 
 // Error definitions BEGIN
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum ArtilleryError {
     IndexError(String),
     DistanceError(String),
@@ -24,10 +24,16 @@ impl ArtilleryError {
         ArtilleryError::DistanceError(error_msg)
     } 
 
+    pub fn minimum_distance_error(func_name: &str, action: &str, coord1: &Coordinate, coord2: &Coordinate) -> ArtilleryError {
+        let error_msg = format!("{func_name} failed to {action}. {coord1:?} is too close to {coord2:?}.");
+        ArtilleryError::DistanceError(error_msg)
+    } 
+
     pub fn resource_error(func_name: &str, action: &str) -> ArtilleryError {
         let error_msg = format!("{func_name} failed to {action}.");
         ArtilleryError::ResourceError(error_msg)
     }
+    
 }
 // Error definitions END
 //
@@ -62,6 +68,7 @@ impl Coordinate {
 #[derive(Debug)]
 pub struct Game {
      pub map_radius: f32,
+     pub game_over: bool,
      pub turn_time: usize,
      pub target_radius: f32,
      pub base_coords: Coordinate,
@@ -79,18 +86,25 @@ pub struct Game {
 impl Game {
     /// `new` sets up the initial game state with these defaults:
     /// - `map_radius` = 100.0 -> The default map is 100 units wide
-    /// - `turn_time` = 5000 -> The default number of cycles per turn is 5000
+    /// - `turn_time` = 100 -> The default number of cycles per turn is 100. This value must match
+    /// `Game.max_resources` due to the way shot costs are calculated. TODO: SCALE THESE VALUES
     /// - `target_radius` = 5.0 -> The default size of explosions is 5.0 units
     /// - `base_coords` = 0,0 -> The default base location is the center of the map
+    /// - `base_radius` = 1.0 -> The default base is a circle with a diameter of 2.0 units
+    /// - `max_unit_range` = 5.0 -> The default max range per turn for a soldier is 5.0 units
+    /// - `max_resources` = 100 -> The default resources for the artillery player is 100.0 per
+    /// turn. This value must match `Game.turn_time` due to the way shot costs are calculated.
+    /// TODO: SCALE THESE VALUES
     pub fn new() -> Game {
         Game {
             map_radius: 100.0, // Currently arbitrary
-            turn_time: 100, // Currently arbitrary
+            turn_time: 100, // MUST MATCH max_resources
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
             base_radius: 1.0, // Currently arbitrary
             max_unit_range: 5.0, // Currently arbitrary
-            max_resources: 100.0, // Currently arbitrary
+            max_resources: 100.0, // MUST BE `100.0` DUE TO SHOT COST FORMULA (see: fn shot_cost) 
+            game_over: false,
             units: vec![],
             destinations: vec![],
             targets: vec![],
@@ -114,10 +128,15 @@ impl Game {
         // Check if Coordinate is outside map:
         let temp_coord = Coordinate {x, y};
         if !self.is_in_map(&temp_coord) {
-            return Err(ArtilleryError::maximum_distance_error("add_unit", "place a target outside the map", self.get_base_coords(), &temp_coord));
+            return Err(ArtilleryError::maximum_distance_error("add_unit", "place a target outside the map", 
+                                                              self.get_base_coords(), &temp_coord));
         }
         
-        // Possible checks for where units can be placed, like bases?
+        // Check if unit is being placed within the base:
+        if self.get_base_coords().contains(&temp_coord, self.get_base_radius()) {
+            return Err(ArtilleryError::minimum_distance_error("get_base_coords", "place a unit within the base",
+                                                             self.get_base_coords(), &temp_coord));
+        }
 
         // All checks succeeded, push the coordinates:
         self.get_units().push(Coordinate {x, y});
@@ -309,6 +328,14 @@ impl Game {
     pub fn get_target_radius(&self) -> f32 {
         self.target_radius
     }
+
+    /// `get_game_over` returns the state of the game.
+    /// **False** means the game is running, *True* means the game is over
+    ///
+    /// Should never fail. Useful if the underlying `Game` struct changes.
+    pub fn get_game_over(&self) -> bool {
+        self.game_over
+    }
 // getters END
 //
 // setters BEGIN
@@ -360,6 +387,14 @@ impl Game {
 
         // Checks complete
         self.get_units()[index] = temp_coord;
+        Ok(())
+    }
+
+    /// `set_game_over` accepts a boolean value, and sets `self.game_over` to that value.
+    /// 
+    /// Currently has no use, but may be useful if we wanted to include side effects.
+    fn set_game_over(&mut self, game_over_bool: bool) -> Result<(), ArtilleryError> {
+        self.game_over = game_over_bool;
         Ok(())
     }
 // setters END
@@ -508,7 +543,7 @@ impl Game {
             // Check if either player has won:
             // Player 2 wins if there are no units on the board
             if self.get_units().is_empty() {
-                self.reset_game();
+                self.set_game_over(true).expect("`set_game_over` shouldn't fail as of 2025-06-05");
                 return Ok(2);
             }
             // Player 1 wins if there is a unit at the base
@@ -516,7 +551,7 @@ impl Game {
             let base_radius = self.get_base_radius().clone();
             for unit in self.get_units() { // Player 1 checks
                 if unit.contains(&base_coords, base_radius) {
-                    self.reset_game();
+                    self.set_game_over(true).expect("`set_game_over` shouldn't fail as of 2025-06-05");
                     return Ok(1);
                 }
             }

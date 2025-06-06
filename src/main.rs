@@ -8,6 +8,7 @@ type Game = Arc<Mutex<game::Game>>;
 /// This is the entry point for hosting an Artillery Game server.
 ///
 /// Running this will start a `warp` server on port 10707.
+/// TODO: ArtilleryErrors are serializable, and can be included in `response` HashMaps
 ///
 /// All paths either return or accept JSON objects.
 /// URI paths:
@@ -26,10 +27,10 @@ type Game = Arc<Mutex<game::Game>>;
 async fn main() {
     use game::Game;
     use filters::all_filters;
+
     let mut game = Arc::new(Mutex::new(Game::new()));
-    //game.lock().await.add_unit(10.0, 10.0);
+
     let api = all_filters(game);
-    // Start server:
     warp::serve(api).run(([127, 0, 0, 1], 10707)).await;
 }
 
@@ -246,6 +247,7 @@ mod handlers {
                 ),
             );
         }
+
        Ok(warp::reply::json(&response))
     }
 
