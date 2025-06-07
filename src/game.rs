@@ -533,7 +533,7 @@ impl Game {
             }
 
             // Remove units in danger. Sorting the vector and then popping the elements 
-            // prevents side-effects caused by removing items from the list.
+            // prevents index side-effects caused by removing items from the list.
             destroyed_units_index.sort();
             while let Some(index) = destroyed_units_index.pop() {
                 self.remove_unit(index).expect("destroyed_units_index MUST match Game.units at this point.");
