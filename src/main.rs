@@ -293,7 +293,6 @@ mod handlers {
             Ok(StatusCode::CREATED)
         }
         else { // Currently only fails when unit is outside map
-               // TODO: OUGHT TO FAIL WHEN A UNIT IS PLACED ON THE BASE
             Ok(StatusCode::BAD_REQUEST)
         }
     }
