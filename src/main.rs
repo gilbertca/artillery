@@ -25,7 +25,7 @@ type Game = Arc<Mutex<game::Game>>;
 /// - /game/run POST -> runs the simulation using `Game.run_turn`
 /// TODO: both players must run the game, so the server needs to track the connections or name in
 /// some way. perhaps all functions could simply accept a name to validate.
-/// - /game/settings/ TODO: UPDATING GAME SETTINGS?
+/// TODO: UPDATING GAME SETTINGS? /game/settings/ 
 #[tokio::main]
 async fn main() {
     use game::Game;
