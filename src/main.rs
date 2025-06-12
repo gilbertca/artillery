@@ -17,6 +17,7 @@ type Game = Arc<Mutex<game::Game>>;
 /// - /units/:index GET (index=usize) -> returns a single unit's position at `index`
 /// - /units POST -> creates a unit at position `x`, `y`, from a json payload
 /// - /units/:index DELETE (index=usize) -> deletes the unit at `index`
+/// TODO: MISSING POSITION ENDPOINT
 /// - /targets GET -> returns a list of all targets' positions in a list
 /// - /targets:index GET (index=usize) -> returns a single target's position at `index`
 /// - /targets POST -> creates a target at position `x`, `y`, from a json payload
@@ -32,10 +33,24 @@ async fn main() {
     use filters::all_filters;
 
     let mut game = Arc::new(Mutex::new(Game::new()));
-    {
+    { // Temporarily hardcoded:
     let mut unlocked = game.lock().await;
-    unlocked.add_unit(20.0, 20.0);
-    unlocked.set_destination(0, 18.0, 18.0);
+    unlocked.add_unit(25.0, 0.0);
+    unlocked.add_unit(50.0, 0.0);
+    unlocked.add_unit(75.0, 0.0);
+    unlocked.add_unit(100.0, 0.0);
+    unlocked.add_unit(-25.0, 0.0);
+    unlocked.add_unit(-50.0, 0.0);
+    unlocked.add_unit(-75.0, 0.0);
+    unlocked.add_unit(-100.0, 0.0);
+    unlocked.add_unit(0.0, 25.0);
+    unlocked.add_unit(0.0, 50.0);
+    unlocked.add_unit(0.0, 75.0);
+    unlocked.add_unit(0.0, 100.0);
+    unlocked.add_unit(0.0, -25.0);
+    unlocked.add_unit(0.0, -50.0);
+    unlocked.add_unit(0.0, -75.0);
+    unlocked.add_unit(0.0, -100.0);
     }
 
     let api = all_filters(game);
@@ -219,8 +234,9 @@ mod handlers {
     use std::collections::HashMap;
     use serde::Serialize;
     use crate::Game;
-    use crate::game::{ArtilleryError, Coordinate};
-    use warp::http::StatusCode;
+    use crate::game::Coordinate;
+    use crage::game::ArtilleryError::{IndexError, DistanceError, ResourceError};
+    use warp::http::{StatusCode, Response};
 
     // This is required so that we may include different value types within our 'response' HashMaps
     #[derive(Serialize)]
@@ -243,16 +259,13 @@ mod handlers {
     /// Also includes all unit destinations using `Game.get_destinations`
     pub async fn get_all_units(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {
-        //  "positions": [Coordinate1, ...],
-        //  "destinations": [Coordinate1, ...]
-        // }
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
         response.insert("positions",
                         JSON::Coordinates(gamestate.get_units().clone()));
         response.insert("destinations",
                         JSON::Coordinates(gamestate.get_destinations().clone()));
+
         Ok(warp::reply::json(&response))
     }
 
@@ -260,65 +273,82 @@ mod handlers {
     /// Also includes the unit's destination using `Game.get_destination`
     pub async fn get_unit(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {
-        //  "position": Coordinate1,
-        //  "destination": Coordinate1
-        // }
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        let unit = gamestate.get_unit(index);
-        if let Ok(unit) = gamestate.get_unit(index) {
-            response.insert("position",
-                            JSON::Coordinate(unit.clone()));
-            response.insert(
-                "destination",
-                JSON::Coordinate(
-                    gamestate
-                    .get_destination(index)
-                    .expect(format!("If a unit exists at {}, then a destination must exist at {}", index, index).as_str())
-                    .clone()
-                ),
-            );
-        }
+        match gamestate.get_unit(index) {
+            Ok(unit) => {
+                response.insert("position",
+                                JSON::Coordinate(unit.clone()));
+                response.insert("destination",
+                    JSON::Coordinate(
+                        gamestate
+                        .get_destination(index)
+                        .expect(format!("If a unit exists at {}, then a destination must exist at {}", index, index).as_str())
+                        .clone()
+                    ),
+                );
 
-       Ok(warp::reply::json(&response))
+                return Ok(warp::reply::json(&response);
+            }
+            Err(error) => {
+                // `Game.get_unit` currently only fails when a unit doesn't exist at that index
+                response.insert("error", error);
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NOT_FOUND));
+            }
+        }
     }
 
     /// `handlers::create_unit` creates a unit at the specified position using `Game.add_unit`
     /// There aren't any rules regarding unit limits; maybe that's the client's job
     pub async fn create_unit(coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        if let Ok(_) = gamestate.add_unit(coordinate.x, coordinate.y) {
-            Ok(StatusCode::CREATED)
-        }
-        else { // Currently only fails when unit is outside map
-            Ok(StatusCode::BAD_REQUEST)
+        match gamestate.add_unit(coordinate.x, coordinate.y) {
+        Ok(_) => {
+            response.insert("coordinate",
+                            JSON::Coordinate(coordinate.clone()));
+
+            return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED));
+        },
+        Err(error) { // Currently only fails when unit is outside map, or inside the base
+            response.insert("error", error)
+
+            Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::BAD_REQUEST))
         }
     }
 
     /// `handlers::delete_unit` deletes a unit at the specified `index` using `Game.remove_unit`
     pub async fn delete_unit(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        if let Ok(_) = gamestate.remove_unit(index) {
-            Ok(StatusCode::NO_CONTENT)
-        }
-        else {
-            Ok(StatusCode::NOT_FOUND)
-        }
+        match gamestate.remove_unit(index) {
+            Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NO_CONTENT)); },
+            Err(error) => { // `Game.remove_unit` currently only fails when index DNE
+                response.insert("error", error);
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NOT_FOUND));
+            }
     }
 
     /// `handlers::set_destination` sets a unit's destination at a particular `index`
     pub async fn set_destination(index: usize, coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        //let mut response: HashMap<&str, JSON> = HashMap::new(); // unused
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        if let Ok(_) = gamestate.set_destination(index, coordinate.x, coordinate.y) {
-            Ok(StatusCode::CREATED)
+        match gamestate.set_destination(index, coordinate.x, coordinate.y) {
+        Ok(_) => {
+            response.insert("index", JSON::Usize(index));
+            response.insert("coordinate", JSON::Coordinate(coordinate));
+
+            return Ok(warp::reply::with_status(warp::reply::json(&response, StatusCode::CREATED)));
         }
-        else {
-            Ok(StatusCode::BAD_REQUEST)
+        Err(error) => {
+            response.insert("error": error)
+
+            return Ok(warp::reply::with_status(warp::reply::json(&response, StatusCode::BAD_REQUEST)));
         }
     }
 
@@ -333,14 +363,11 @@ mod handlers {
     /// Also includes the current target costs using `Game.get_target_costs`
     pub async fn get_all_targets(mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {
-        //  "targets": [Coordinate1, ...],
-        //  "target_costs": [cost1, ...]
-        // }
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
         response.insert("targets", JSON::Coordinates(gamestate.get_targets().clone()));
         response.insert("target_costs", JSON::F32s(gamestate.get_target_costs().clone()));
+
         Ok(warp::reply::json(&response))
     }
 
@@ -348,52 +375,62 @@ mod handlers {
     /// `Game.get_target`
     pub async fn get_target(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
-        // {
-        //  "target": Coordinate,
-        //  "target_cost": cost1
-        // }
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        let target = gamestate.get_target(index);
-        if let Ok(target) = gamestate.get_target(index) {
-            response.insert("target", JSON::Coordinate(target.clone()));
-            response.insert(
-                "target_cost",
-                JSON::F32(
-                        gamestate
-                        .get_target_cost(index)
-                        .expect(format!("If a target exists at {}, then a cost must exist at {}", index, index).as_str())
-                        .clone()
-                )
-            );
-        }
-        Ok(warp::reply::json(&response))
+        match gamestate.get_target(index) {
+            Ok(target) => {
+                response.insert("target", JSON::Coordinate(target.clone()));
+                response.insert(
+                    "target_cost",
+                    JSON::F32(
+                            gamestate
+                            .get_target_cost(index)
+                            .expect(format!("If a target exists at {}, then a cost must exist at {}", index, index).as_str())
+                            .clone()
+                    )
+                );
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED));
+            }
+            // `Game.get_target` currently only fails when the index DNE
+            Err(error) => {
+                response.insert("error", error);
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NOT_FOUND));
+            }
+            
     }
 
     /// `handlers::create_target` creates a target at the specified position using
     /// `Game.add_target`
     pub async fn create_target(coordinate: Coordinate, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        if let Ok(_) = gamestate.add_target(coordinate.x, coordinate.y) {
-            Ok(StatusCode::CREATED)
-        }
-        // TODO: INTERPRET THE ARTILLERYERRORS
-        else {
-            Ok(StatusCode::BAD_REQUEST)   
-        }
+        match gamestate.add_target(coordinate.x, coordinate.y) {
+            Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED)); }
+            Err(error) => { // Fails when target is out of map, and not enough resources
+                response.insert("error", error);
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::FORBIDDEN));
+            },
+        
     }
 
     /// `handlers::delete_target` deletes the newest target using `Game.remove_newest_target`
     pub async fn delete_target(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
+        let mut response: HashMap<&str, JSON> = HashMap::new();
 
-        if let Ok(_) = gamestate.remove_newest_target() {
-            Ok(StatusCode::NO_CONTENT)
+        match gamestate.remove_newest_target() {
+            Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NO_CONTENT)); },
+            Err(error) => {
+                response.insert("error", error);
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::FORBIDDEN));
+            }
         }
-        else {
-            Ok(StatusCode::NOT_FOUND)
-        }
+
     }
 
     /// ****** ******* *    * ***** ***** *******
