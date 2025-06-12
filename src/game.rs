@@ -12,6 +12,7 @@ pub enum ArtilleryError {
 // TODO: Update error messages to use proper serialization, not the impl of debug
 // TODO: DRY errors?
 // TODO: Shouldn't be able to place units within the base with `add_unit`
+// TODO: UNIT RESOURCE COST, SIMILAR TO ARTILLERY COSTS?
 
 impl ArtilleryError {
     pub fn index_error(func_name: &str, index: usize) -> ArtilleryError {
