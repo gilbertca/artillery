@@ -6,6 +6,7 @@ import curses.panel
 import curses.textpad
 import requests
 
+# TODO: use argparse to accept different addresses, settings
 URL = "http://localhost:10707"
 DEBUG_WINDOW = True
 MAP_SCALE = 0.2 # Adjust this value to scale the map
@@ -159,7 +160,8 @@ def delete_unit(panel):
     # Handle input:
     data = _handle_popup_input(delete_unit_window, "Delete Unit", ('idx',), (int,),)
     index = data.pop('idx')
-    response = requests.post(f"{URL}/units/{int(index)}")
+    if index is None: index = 0
+    response = requests.delete(f"{URL}/units/{int(index)}")
 
     # Clean up:
     _cleanup_popup(delete_unit_window)
