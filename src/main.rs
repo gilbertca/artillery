@@ -229,6 +229,8 @@ mod handlers {
         F32s(Vec<f32>),
         Usize(usize),
         Usizes(Vec<usize>),
+        Bool(bool),
+        Bools(Vec<bool>),
         Error(ArtilleryError),
     }
 
@@ -436,6 +438,7 @@ mod handlers {
         response.insert("base_radius", JSON::F32(gamestate.get_base_radius().clone()));
         response.insert("max_unit_range", JSON::F32(gamestate.get_max_unit_range().clone()));
         response.insert("max_resources", JSON::F32(gamestate.get_max_resources().clone()));
+        response.insert("game_over", JSON::Bool(gamestate.get_game_over().clone()));
 
         Ok(warp::reply::json(&response))
     }
