@@ -19,6 +19,7 @@ def _create_popup(panel, width=0.10, height=0.15):
     start_x = int((max_x - temp_win_width) / 2) # centered x
     start_y = int((max_y - temp_win_height) / 2) # centered y
     popup = stdscr.derwin(temp_win_height, temp_win_width, start_y, start_x)
+    popup.clear()
     popup.keypad(True) # enable keypad to receive multi-sequence keys as indiviual codes
     return popup
 
