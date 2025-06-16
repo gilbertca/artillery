@@ -1,4 +1,5 @@
 import math
+import time
 import curses
 import curses.panel
 import curses.textpad
@@ -140,11 +141,20 @@ def add_unit(panel):
     add_unit_window.bkgd(' ', POPUP_COLOR)
 
     # Handle input:
-    data = _handle_popup_input(add_unit_window, "Units", ('x', 'y'), (float, float),)
+    data = _handle_popup_input(add_unit_window, "Add Unit", ('x', 'y'), (float, float),)
     response = requests.post(f"{URL}/units", json=data)
 
     # Clean up:
     _cleanup_popup(add_unit_window)
+
+def delete_unit(panel):
+    # Create and style the derived window:
+    delete_unit_window = _create_popup(panel)
+    delete_unit_window.bkgd(' ', POPUP_COLOR)
+
+    # Handle input:
+    data = _handle_popup_input(delete_unit_window, "Delete Unit", ('idx',), (int,),)
+    
 
 def set_destination(panel):
     # Create and style the derived window:
@@ -152,9 +162,9 @@ def set_destination(panel):
     set_destination_window.bkgd(' ', POPUP_COLOR)
 
     # Handle input:
-    data = _handle_popup_input(set_destination_window, "Destination", ('x', 'y', 'idx',), (float, float, int,),)
+    data = _handle_popup_input(set_destination_window, "Set Destination", ('x', 'y', 'idx',), (float, float, int,),)
     index = data.pop('idx')
-    response = requests.post(f"{URL}/units/{index}", json=data)
+    response = requests.post(f"{URL}/units/{int(index)}", json=data)
 
     # Clean up:
     _cleanup_popup(set_destination_window)
@@ -165,11 +175,14 @@ def add_target(panel):
     add_target_window.bkgd(' ', POPUP_COLOR)
 
     # Handle input:
-    data = _handle_popup_input(add_target_window, "Targets", ('x', 'y'), (float, float,),)
+    data = _handle_popup_input(add_target_window, "Add Target", ('x', 'y'), (float, float,),)
     response = requests.post(f"{URL}/targets", json=data)
 
     # Clean up:
     _cleanup_popup(add_target_window)
+
+def delete_target(panel):
+    response = requests.delete(f"{URL}/targets")
 
 def run_turn(panel):
     response = requests.post(f"{URL}/game/run")
@@ -206,8 +219,10 @@ def main(stdscr):
     # Define the action menu; keys are displayed to user; callbacks should call the API
     actions = {
         "Add unit": add_unit,
-        "Add target": add_target,
         "Set destination": set_destination,
+        "Delete unit": delete_unit,
+        "Add target": add_target,
+        "Delete target": delete_target,
         "Run turn": run_turn,
     }
     get_action = lambda index: list(actions.values())[index]
@@ -216,10 +231,13 @@ def main(stdscr):
     # Main loop:
     gamestate = None
     RUNNING = True
+    LAST_UPDATE = time.time() - 5.0 # subtract 5 to guarantee update on the first iteration
     while RUNNING:
         # Update the game's state:
-        response = requests.get(f"{URL}/game")
-        gamestate = data = response.json()
+        if time.time() - LAST_UPDATE > 4.0: # Only update ever 4 seconds
+            gamestate = data = requests.get(f"{URL}/game").json()
+            unit_iter = requests.get(f"{URL}/units").json().get('positions').get('Coordinates')
+            target_iter = requests.get(f"{URL}/targets").json().get('targets').get('Coordinates')
 
         # Draw the actions:
         for line_num, (menu_str, menu_action) in enumerate(actions.items()):
@@ -250,12 +268,10 @@ def main(stdscr):
                     stdscr.addstr(y + top_start, x + left_start, '*', GROUND_COLOR)
 
         # Draw units on the screen:
-        unit_iter = requests.get(f"{URL}/units").json().get('positions').get('Coordinates')
         for unit in unit_iter: # y-coordinates need to be inverted to be drawn properly
             stdscr.addstr(int(2 * map_radius - unit['y'] * z + top_start), int(unit['x'] * z + left_start), '@', UNIT_COLOR)
 
         # Draw targets on the screen:
-        target_iter = requests.get(f"{URL}/targets").json().get('targets').get('Coordinates')
         for target in target_iter: # y-coordinates need to be inverted to be drawn properly
             stdscr.addstr(int(2 * map_radius - target['y'] * z + top_start), int(target['x'] * z + left_start), "X", TARGET_COLOR)
 
