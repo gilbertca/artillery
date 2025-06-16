@@ -1,11 +1,13 @@
 import math
 import time
+import json
 import curses
 import curses.panel
 import curses.textpad
 import requests
 
 URL = "http://localhost:10707"
+DEBUG_WINDOW = True
 MAP_SCALE = 0.2 # Adjust this value to scale the map
 
 # width and height should be float values representing
@@ -147,6 +149,7 @@ def add_unit(panel):
 
     # Clean up:
     _cleanup_popup(add_unit_window)
+    return response
 
 def delete_unit(panel):
     # Create and style the derived window:
@@ -155,6 +158,12 @@ def delete_unit(panel):
 
     # Handle input:
     data = _handle_popup_input(delete_unit_window, "Delete Unit", ('idx',), (int,),)
+    index = data.pop('idx')
+    response = requests.post(f"{URL}/units/{int(index)}")
+
+    # Clean up:
+    _cleanup_popup(delete_unit_window)
+    return response
     
 
 def set_destination(panel):
@@ -169,6 +178,7 @@ def set_destination(panel):
 
     # Clean up:
     _cleanup_popup(set_destination_window)
+    return response
 
 def add_target(panel):
     # Create and style the derived window:
@@ -181,12 +191,15 @@ def add_target(panel):
 
     # Clean up:
     _cleanup_popup(add_target_window)
+    return response
 
 def delete_target(panel):
     response = requests.delete(f"{URL}/targets")
+    return response
 
 def run_turn(panel):
     response = requests.post(f"{URL}/game/run")
+    return response
 
 def main(stdscr):
     # Initial setup:
@@ -233,12 +246,28 @@ def main(stdscr):
     gamestate = None
     RUNNING = True
     LAST_UPDATE = time.time() - 5.0 # subtract 5 to guarantee update on the first iteration
+    last_response = None
+    max_y, max_x = stdscr.getmaxyx()
+    if DEBUG_WINDOW:
+        debug_window = stdscr.derwin(20, 60, 0, max_x - 61)
     while RUNNING:
         # Update the game's state:
         if time.time() - LAST_UPDATE > 4.0: # Only update ever 4 seconds
             gamestate = data = requests.get(f"{URL}/game").json()
             unit_iter = requests.get(f"{URL}/units").json().get('positions').get('Coordinates')
             target_iter = requests.get(f"{URL}/targets").json().get('targets').get('Coordinates')
+
+        # Draw the debugger:
+        if DEBUG_WINDOW and last_response:
+            debug_window.clear()
+            try:
+                formatted_response_list = json.dumps(last_response.json(), indent=4)
+            except requests.exceptions.JSONDecodeError:
+                formatted_response_list = last_response.text
+            for index, line_item in enumerate(formatted_response_list.split('\n')):
+                debug_window.addnstr(index, max_x - 161, str(line_item), 60)
+            debug_window.refresh()
+            
 
         # Draw the actions:
         for line_num, (menu_str, menu_action) in enumerate(actions.items()):
@@ -291,7 +320,7 @@ def main(stdscr):
             # will result in the wrong function being selected (it seems to always be list[-1],
             # but I would need to create more tests to isolate the scoping issue)
             menu_action = get_action(selected_action_index)
-            menu_action(stdscr_panel)
+            last_response = menu_action(stdscr_panel)
         # q key in main menu:
         elif key in (ord('q'), ord('Q')):
             RUNNING = False
