@@ -265,7 +265,7 @@ def main(stdscr):
             except requests.exceptions.JSONDecodeError:
                 formatted_response_list = last_response.text
             for index, line_item in enumerate(formatted_response_list.split('\n')):
-                debug_window.addnstr(index, max_x - 161, str(line_item), 60)
+                debug_window.addnstr(index, 0, str(line_item), 60)
             debug_window.refresh()
             
 
