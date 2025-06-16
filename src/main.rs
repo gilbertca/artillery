@@ -30,30 +30,11 @@ type Game = Arc<Mutex<game::Game>>;
 #[tokio::main]
 async fn main() {
     use game::Game;
-    use filters::all_filters;
+    use filters;
 
     let mut game = Arc::new(Mutex::new(Game::new()));
-    { // Temporarily hardcoded:
-    let mut unlocked = game.lock().await;
-    unlocked.add_unit(25.0, 0.0);
-    unlocked.add_unit(50.0, 0.0);
-    unlocked.add_unit(75.0, 0.0);
-    unlocked.add_unit(100.0, 0.0);
-    unlocked.add_unit(-25.0, 0.0);
-    unlocked.add_unit(-50.0, 0.0);
-    unlocked.add_unit(-75.0, 0.0);
-    unlocked.add_unit(-100.0, 0.0);
-    unlocked.add_unit(0.0, 25.0);
-    unlocked.add_unit(0.0, 50.0);
-    unlocked.add_unit(0.0, 75.0);
-    unlocked.add_unit(0.0, 100.0);
-    unlocked.add_unit(0.0, -25.0);
-    unlocked.add_unit(0.0, -50.0);
-    unlocked.add_unit(0.0, -75.0);
-    unlocked.add_unit(0.0, -100.0);
-    }
 
-    let api = all_filters(game);
+    let api = filters::all_filters(game);
     warp::serve(api).run(([127, 0, 0, 1], 10707)).await;
 }
 
@@ -235,18 +216,20 @@ mod handlers {
     use serde::Serialize;
     use crate::Game;
     use crate::game::Coordinate;
-    use crage::game::ArtilleryError::{IndexError, DistanceError, ResourceError};
+    use crate::game::ArtilleryError;
+    use crate::game::ArtilleryError::{IndexError, DistanceError, ResourceError};
     use warp::http::{StatusCode, Response};
 
     // This is required so that we may include different value types within our 'response' HashMaps
     #[derive(Serialize)]
     enum JSON {
         Coordinate(Coordinate),
-        Coordinates(Vec<Coordinate>), // Vec<Coordinate> appears several times in `Game`'s config
+        Coordinates(Vec<Coordinate>),
         F32(f32),
-        F32s(Vec<f32>), // This is so we can use the same enum for any function with a 'response'
+        F32s(Vec<f32>),
         Usize(usize),
-        Usizes(Vec<usize>), // This is so we can use the same enum for any function with a 'response' 
+        Usizes(Vec<usize>),
+        Error(ArtilleryError),
     }
 
     /// *   * **   * ***** ******* ******
@@ -288,11 +271,11 @@ mod handlers {
                     ),
                 );
 
-                return Ok(warp::reply::json(&response);
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::OK));
             }
             Err(error) => {
                 // `Game.get_unit` currently only fails when a unit doesn't exist at that index
-                response.insert("error", error);
+                response.insert("error", JSON::Error(error));
 
                 return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NOT_FOUND));
             }
@@ -306,16 +289,17 @@ mod handlers {
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
         match gamestate.add_unit(coordinate.x, coordinate.y) {
-        Ok(_) => {
-            response.insert("coordinate",
-                            JSON::Coordinate(coordinate.clone()));
+            Ok(_) => {
+                response.insert("coordinate",
+                                JSON::Coordinate(coordinate.clone()));
 
-            return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED));
-        },
-        Err(error) { // Currently only fails when unit is outside map, or inside the base
-            response.insert("error", error)
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED));
+            },
+            Err(error) => { // Currently only fails when unit is outside map, or inside the base
+                response.insert("error", JSON::Error(error));
 
-            Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::BAD_REQUEST))
+                Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::BAD_REQUEST))
+            }
         }
     }
 
@@ -327,10 +311,11 @@ mod handlers {
         match gamestate.remove_unit(index) {
             Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NO_CONTENT)); },
             Err(error) => { // `Game.remove_unit` currently only fails when index DNE
-                response.insert("error", error);
+                response.insert("error", JSON::Error(error));
 
                 return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NOT_FOUND));
             }
+        }
     }
 
     /// `handlers::set_destination` sets a unit's destination at a particular `index`
@@ -339,16 +324,17 @@ mod handlers {
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
         match gamestate.set_destination(index, coordinate.x, coordinate.y) {
-        Ok(_) => {
-            response.insert("index", JSON::Usize(index));
-            response.insert("coordinate", JSON::Coordinate(coordinate));
+            Ok(_) => {
+                response.insert("index", JSON::Usize(index));
+                response.insert("coordinate", JSON::Coordinate(coordinate));
 
-            return Ok(warp::reply::with_status(warp::reply::json(&response, StatusCode::CREATED)));
-        }
-        Err(error) => {
-            response.insert("error": error)
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED));
+            }
+            Err(error) => {
+                response.insert("error", JSON::Error(error));
 
-            return Ok(warp::reply::with_status(warp::reply::json(&response, StatusCode::BAD_REQUEST)));
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::BAD_REQUEST));
+            }
         }
     }
 
@@ -394,11 +380,11 @@ mod handlers {
             }
             // `Game.get_target` currently only fails when the index DNE
             Err(error) => {
-                response.insert("error", error);
+                response.insert("error", JSON::Error(error));
 
                 return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NOT_FOUND));
             }
-            
+        }
     }
 
     /// `handlers::create_target` creates a target at the specified position using
@@ -410,11 +396,11 @@ mod handlers {
         match gamestate.add_target(coordinate.x, coordinate.y) {
             Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED)); }
             Err(error) => { // Fails when target is out of map, and not enough resources
-                response.insert("error", error);
+                response.insert("error", JSON::Error(error));
 
                 return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::FORBIDDEN));
             },
-        
+        }
     }
 
     /// `handlers::delete_target` deletes the newest target using `Game.remove_newest_target`
@@ -425,7 +411,7 @@ mod handlers {
         match gamestate.remove_newest_target() {
             Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::NO_CONTENT)); },
             Err(error) => {
-                response.insert("error", error);
+                response.insert("error", JSON::Error(error));
 
                 return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::FORBIDDEN));
             }
