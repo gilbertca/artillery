@@ -39,7 +39,7 @@ This game began as a personal project to learn Rust. To separate concerns, I spl
 - tokio = { version = "1", features = ["full"] }
 - warp = "0.3" 
 
-These entries should be located under `[dependencies]` in your **Cargo.toml** file.
+These entries should be located under `[dependencies]` in your **Cargo.toml** file. You can also use `cargo add` to add them manually, though you *may* run into issues if you use other versions.
 
 **Python Dependencies**:
 - certifi==2025.6.15
@@ -48,7 +48,7 @@ These entries should be located under `[dependencies]` in your **Cargo.toml** fi
 - requests==2.32.4
 - urllib3==2.4.0 
 
-These entries are located in **requirements.txt**, and they can be installed with `pip install -r requirements.txt`. Your implementation of Python *probably* has all other dependencies in the standard library. If you are using a non-standard implementation and you are running into issues, ensure you have the `curses`, `time`, `json`, and `math` standard modules.
+These entries are located in **requirements.txt**, and they can be installed with `pip install -r requirements.txt`. Your implementation of Python *probably* has the other dependencies in the standard library. If you are using a non-standard implementation and you are running into issues, ensure you have the `curses`, `time`, `json`, and `math` standard modules.
 
 # TODOs
 TODO: RUNNING THE SERVER FROM THE CMDLINE ON A SPECIFIED PORT / IP (CURRENTLY HARDCODED TO 127.0.0.1:10707)
