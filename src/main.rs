@@ -396,7 +396,15 @@ mod handlers {
         let mut response: HashMap<&str, JSON> = HashMap::new();
 
         match gamestate.add_target(coordinate.x, coordinate.y) {
-            Ok(_) => { return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED)); }
+            Ok(_) => { 
+                let coordinate = Coordinate { x: coordinate.x, y: coordinate.y };
+                response.insert("target", JSON::Coordinate(coordinate));
+                let index = gamestate.get_targets().len() - 1;
+                let target_cost = gamestate.get_target_cost(index).expect("Target was just created by `create_target`").clone();
+                response.insert("cost", JSON::F32(target_cost));
+
+                return Ok(warp::reply::with_status(warp::reply::json(&response), StatusCode::CREATED));
+            }
             Err(error) => { // Fails when target is out of map, and not enough resources
                 response.insert("error", JSON::Error(error));
 
