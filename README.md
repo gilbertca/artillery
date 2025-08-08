@@ -3,7 +3,10 @@ A simple 2-player game written in Rust.
 
 To create the server, run `cargo run --release`, or compile with `cargo build --release` and run the executable. A complete list of endpoints can be found below.
 
-To run the client, run `python artillery-client.py URL=[url]`, where `[url]` points to a running server. TODO: Implement argparse in the client
+To run the `ncurses` client, run `python3 ncurses-client.py --url=http://[url]`, where `[url]` points to a running server.
+To run the `turtle` client, run `python3 turtle-client.py --url=http://[url]`, where `[url]` points to a running server.
+
+If you are running this game on a local machine (which you probably are), then the url above might appear as `--url=http://[LAN ADDRESS]:10707` 
 
 To create your own client, simply make RESTful requests to the address where your server is running. A full list of endpoints can be found below.
 
@@ -13,7 +16,7 @@ This game began as a personal project to learn Rust. To separate concerns, I spl
 
 2. **The Server** `main.rs` - The implementation `Game` was designed from the beginning to work within a RESTful architecture. This allows us to completely decouple the backend from the frontend. The server is implemented using the `warp` framework. Each server currently only supports a single game, and the server doesn't bother trying to authenticate or identify users.
 
-3. **The Client** - `artillery-client.py` - For my own testing purposes, and for your own inspiration, I have included a simple client created with Python's implementation of `ncurses`. *The code in this client is NOT a perfect abstraction or perfect implementation. Use and/or enjoy at your own risk.*
+3. **The Client** - `ncurses-client.py` - For my own testing purposes, and for your own inspiration, I have included clients created with Python's implementation of `ncurses` and `turtle`. *The code in these clients are NOT perfect abstractions or perfect implementations. They are probably unfinished, since I created them for testing and proof of concept purposes. Use and/or enjoy at your own risk.*
 
 # Endpoints
 ## GET
@@ -48,10 +51,11 @@ These entries should be located under `[dependencies]` in your **Cargo.toml** fi
 - requests==2.32.4
 - urllib3==2.4.0 
 
-These entries are located in **requirements.txt**, and they can be installed with `pip install -r requirements.txt`. Your implementation of Python *probably* has the other dependencies in the standard library. If you are using a non-standard implementation and you are running into issues, ensure you have the `curses`, `time`, `json`, and `math` standard modules.
+These entries are located in **requirements.txt**, and they can be installed with `pip install -r requirements.txt`. Your implementation of Python *probably* has the other dependencies in the standard library. If you are using a non-standard implementation and you are running into issues, ensure you have the `curses`, `time`, `json`, `turtle`, and `math` standard modules.
 
 # TODOs
-TODO: RUNNING THE SERVER FROM THE CMDLINE ON A SPECIFIED PORT / IP (CURRENTLY HARDCODED TO 127.0.0.1:10707)
-TODO: argparse in the client
 TODO: Creating endpoints for configuring the game's settings
 TODO: Determine how to place units at the start - perhaps with a function, or predetermined setting - and implement it
+TODO: Update the server to serve `string` values which can be cast to their appropriate type, reducing the size of the serialized JSON payloads. This requires an update to the ncurses client, and the `warp` server code (in `main.rs`).
+TODO: Update the README to include information about casting from strings
+TODO: Create the actual turtle client

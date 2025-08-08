@@ -1,13 +1,13 @@
 import math
 import time
 import json
+import argparse
 import curses
 import curses.panel
 import curses.textpad
 import requests
 
-# TODO: use argparse to accept different addresses, settings
-URL = "http://localhost:10707"
+URL = None
 DEBUG_WINDOW = True
 MAP_SCALE = 0.2 # Adjust this value to scale the map
 
@@ -328,4 +328,9 @@ def main(stdscr):
             RUNNING = False
 
 if __name__=="__main__":
+    parser = argparse.ArgumentParser(
+            description='A client written with Python\'s ncurses for the Artillery game.')
+    parser.add_argument('--url', type=str, required=True)
+    args = parser.parse_args()
+    URL = args.url
     curses.wrapper(main)
