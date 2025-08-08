@@ -1,4 +1,3 @@
-use warp::Filter;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -30,7 +29,7 @@ async fn main() {
     use game::Game;
     use filters;
 
-    let mut game = Arc::new(Mutex::new(Game::new()));
+    let game = Arc::new(Mutex::new(Game::new()));
 
     let api = filters::all_filters(game);
     warp::serve(api).run(([127, 0, 0, 1], 10707)).await;
@@ -211,12 +210,12 @@ mod filters {
 mod handlers {
     use std::convert::Infallible;
     use std::collections::HashMap;
-    use serde::Serialize;
+    
     use crate::Game;
     use crate::game::Coordinate;
-    use crate::game::ArtilleryError;
-    use crate::game::ArtilleryError::{IndexError, DistanceError, ResourceError};
-    use warp::http::{StatusCode, Response};
+    
+    
+    use warp::http::StatusCode;
 
     /// *   * **   * ***** ******* ******
     /// *   * * *  *   *      *    **
@@ -226,7 +225,7 @@ mod handlers {
     
     /// `handlers::get_all_units` returns a list of all unit positions using `Game.get_units`
     /// Also includes all unit destinations using `Game.get_destinations`
-    pub async fn get_all_units(mut game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn get_all_units(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         let mut response: HashMap<&str, String> = HashMap::new();
 
@@ -240,7 +239,7 @@ mod handlers {
 
     /// `handlers::get_unit` returns a unit's position at `index` in the list using `Game.get_unit`
     /// Also includes the unit's destination using `Game.get_destination`
-    pub async fn get_unit(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn get_unit(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         let mut response: HashMap<&str, String> = HashMap::new();
 
@@ -333,7 +332,7 @@ mod handlers {
 
     /// `handlers::get_all_targets` returns list of target positions using `Game.get_targets`
     /// Also includes the current target costs using `Game.get_target_costs`
-    pub async fn get_all_targets(mut game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn get_all_targets(game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         let mut response: HashMap<&str, String> = HashMap::new();
 
@@ -345,7 +344,7 @@ mod handlers {
 
     /// `handlers::get_target` returns a target's position at `index` in the list using
     /// `Game.get_target`
-    pub async fn get_target(index: usize, mut game: Game) -> Result<impl warp::Reply, Infallible> {
+    pub async fn get_target(index: usize, game: Game) -> Result<impl warp::Reply, Infallible> {
         let mut gamestate = game.lock().await;
         let mut response: HashMap<&str, String> = HashMap::new();
 
@@ -421,7 +420,7 @@ mod handlers {
     
     /// `handlers::get_game_config` returns all of 'settings' for the currently running `Game`
     pub async fn get_game_config(game: Game) -> Result<impl warp::Reply, Infallible> {
-        let mut gamestate = game.lock().await;
+        let gamestate = game.lock().await;
 
         let mut response: HashMap<&str, String> = HashMap::new();
         response.insert("map_radius", serde_json::to_string(&gamestate.get_map_radius().clone()).unwrap());
