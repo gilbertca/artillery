@@ -101,7 +101,7 @@ impl Game {
     pub fn new() -> Game {
         Game {
             map_radius: 100.0, // Currently arbitrary
-            minimum_unit_distance: 90.0 // 90% of map_radius
+            minimum_unit_distance: 90.0, // 90% of map_radius
             turn_time: 100, // MUST MATCH max_resources
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
