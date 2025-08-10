@@ -430,6 +430,7 @@ mod handlers {
         response.insert("max_unit_range", serde_json::to_string(&gamestate.get_max_unit_range().clone()).unwrap());
         response.insert("max_resources", serde_json::to_string(&gamestate.get_max_resources().clone()).unwrap());
         response.insert("game_over", serde_json::to_string(&gamestate.get_game_over().clone()).unwrap());
+        response.insert("minimum_unit_radius", serde_json::to_string(&gamestate.get_minimum_unit_radius().clone()).unwrap());
 
         Ok(warp::reply::json(&response))
     }

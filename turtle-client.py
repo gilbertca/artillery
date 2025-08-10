@@ -46,6 +46,13 @@ class Game:
         self.turtles.append(t)
         return t
 
+    def _process_response_json(self, response):
+        # Some magic to convert (most) strings to Python objects:
+        return_values = {}
+        for key, value in response.items():
+            return_values.update({key: json.loads(value)})
+        return return_values
+
     def clear_turtles(self):
         while len(self.turtles) != 0:
             t = self.turtles.pop()
@@ -56,14 +63,13 @@ class Game:
             # see: https://github.com/python/cpython/issues/93642
             # This method instead hides all registered turtles, and removes all references to them
             # Essentially, one must pretend the turtle has been deleted
-            turtle.reset()
+            turtle.clear()
             turtle.hideturtle()
 
     def get_game_settings(self):
         response = requests.get(f"{URL}/game").json()
-        # API returns all strings; this step converts them to Python data types
-        for key, value in response.items():
-            self.game_settings.update({key: json.loads(value)})
+        game_settings = self._process_response_json(response)
+        self.game_settings.update(game_settings)
 
     def get_player_side(self):
         # Clicking a turtle chooses the side
@@ -101,12 +107,14 @@ class Game:
         self.map_turtle.speed(0)
         self._draw_circle(self.game_settings['map_radius'], "black") # Draw map
         self._draw_circle(self.game_settings['base_radius'], "magenta") # Draw base
+        self._draw_circle(self.game_settings['minimum_unit_radius'], "red") # Minimum distance indicator
         self.map_turtle.hideturtle()
 
     def _draw_circle(self, radius, color):
         self.map_turtle.hideturtle()
         self.map_turtle.penup()
         self.map_turtle.goto(0, 0)
+        self.map_turtle.penwidth(5)
         self.map_turtle.forward(SCALE*radius)
         self.map_turtle.left(90)
         self.map_turtle.pendown()
@@ -118,7 +126,6 @@ class Game:
         x = x / SCALE
         y = y / SCALE
         response = requests.post(f"{URL}/units", json={'x': x, 'y': y})
-        print(response.json())
 
     def play(self):
         self.draw_map()

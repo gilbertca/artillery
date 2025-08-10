@@ -69,7 +69,7 @@ impl Coordinate {
 #[derive(Debug)]
 pub struct Game {
      pub map_radius: f32,
-     pub minimum_unit_distance: f32,
+     pub minimum_unit_radius: f32,
      pub game_over: bool,
      pub turn_time: usize,
      pub target_radius: f32,
@@ -88,7 +88,7 @@ pub struct Game {
 impl Game {
     /// `new` sets up the initial game state with these defaults:
     /// - `map_radius` = 100.0 -> The default map is 100 units wide
-    /// - `minimum_unit_distance` = 90.0 -> Units must be placed on the outer edge
+    /// - `minimum_unit_radius` = 90.0 -> Units must be placed on the outer edge
     /// of the map
     /// - `turn_time` = 100 -> The default number of cycles per turn is 100. This value must match
     /// `Game.max_resources` due to the way shot costs are calculated.
@@ -101,7 +101,7 @@ impl Game {
     pub fn new() -> Game {
         Game {
             map_radius: 100.0, // Currently arbitrary
-            minimum_unit_distance: 90.0, // 90% of map_radius
+            minimum_unit_radius: 90.0, // 90% of map_radius
             turn_time: 100, // MUST MATCH max_resources
             target_radius: 5.0, // Currently arbitrary
             base_coords: Coordinate {x:0.0, y:0.0}, // Currently arbitrary
@@ -137,7 +137,7 @@ impl Game {
         }
         
         // Check if unit is being placed too close to the base:
-        if temp_coord.distance(&self.get_base_coords()) < self.get_minimum_unit_distance() {
+        if temp_coord.distance(&self.get_base_coords()) < self.get_minimum_unit_radius() {
             return Err(ArtilleryError::minimum_distance_error("add_unit", "place a unit too close to the base",
                                                              self.get_base_coords(), &temp_coord));
         }
@@ -342,10 +342,10 @@ impl Game {
         self.game_over
     }
 
-    /// `get_minimum_unit_distance` returns the minimum distance from the base that a new unit must
+    /// `get_minimum_unit_radius` returns the minimum distance from the base that a new unit must
     /// be placed.
-    pub fn get_minimum_unit_distance(&self) -> f32 {
-        self.minimum_unit_distance
+    pub fn get_minimum_unit_radius(&self) -> f32 {
+        self.minimum_unit_radius
     }
 // getters END
 //
