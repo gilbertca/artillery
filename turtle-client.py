@@ -20,6 +20,10 @@ class Game(Drawing, API):
     def update_game_settings(self):
         self.game_settings.update(self.query_api('game', 'get'))
 
+    def update_unit_list(self):
+        print(self.query_api('units', 'get'))
+        pass
+
     def run(self):
         self.update_game_settings()
 
@@ -55,10 +59,16 @@ class Game(Drawing, API):
         # Start by cleaning up 'select_player_side_phase_buttons' buttons:
         self.hide_turtles('select_player_side_phase_buttons')
 
-        # Point the end_phase_button to the next phase 'set_destination_phase':
-        end_phase_button = self.draw_add_unit_phase()
+        # Draw the add_unit_phase; create the interactive turtles:
+        end_phase_button, add_unit_turtle = self.draw_add_unit_phase()
+        # 'add_unit_turtle' allows dragging and dropping units
+        add_unit_turtle.ondrag(add_unit_turtle.goto)
+        add_unit_turtle.onrelease(self.add_unit)
         # (7A) Control is passed to 'set_destination_phase'
         end_phase_button.onclick(self.set_destination_phase)
+
+    def add_unit(self, x, y):
+        print(x, y)
 
     def set_destination_phase(self, _x, _y):
         # _x and _y are required since 'onclick' passes an x and y coordinate
