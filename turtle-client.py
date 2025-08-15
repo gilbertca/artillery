@@ -8,14 +8,14 @@ import time
 from py.api import API
 from py.drawing import Drawing
 
-
 class Game(Drawing, API):
     def __init__(self, url):
-        super().__init__()
-        self.url = url
-        self.game_settings = {}
-        # 0 = no side chosen, 1 = unit side chosen, 2 = target side chosen
-        self.player_side = 0
+        # Explicit mixin initialization:
+        Drawing.__init__(self)
+        API.__init__(self, url)
+
+        self.game_settings = {} # from /game endpoint
+        self.player_side = 0 # 0 = no side chosen, 1 = unit side chosen, 2 = target side chosen
 
     def update_game_settings(self):
         self.game_settings.update(self.query_api('game', 'get'))
@@ -51,10 +51,19 @@ class Game(Drawing, API):
             self.add_target_phase()
 
     def add_unit_phase(self):
-        pass
+        # (6A) Control is received from 'choose_player_side'
+        # Start by cleaning up 'select_player_side_phase_buttons' buttons:
+        self.hide_turtles('select_player_side_phase_buttons')
 
-    def set_destination_phase(self):
-        pass
+        # Point the end_phase_button to the next phase 'set_destination_phase':
+        end_phase_button = self.draw_add_unit_phase()
+        # (7A) Control is passed to 'set_destination_phase'
+        end_phase_button.onclick(self.set_destination_phase)
+
+    def set_destination_phase(self, _x, _y):
+        # _x and _y are required since 'onclick' passes an x and y coordinate
+        # Start by cleaning up 'add_unit_phase_temporary_turtles':
+        self.hide_turtles('add_unit_phase_turtles')
 
     def add_target_phase(self):
         pass

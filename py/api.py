@@ -4,6 +4,9 @@ import json
 # TODO: Error handling in 'query_api'
 
 class API:
+    def __init__(self, url):
+        self.url = url
+
     def query_api(self, uri, method, payload={}):
         method_namespace = {
             'get': requests.get,
