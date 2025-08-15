@@ -1,9 +1,10 @@
 import requests
+import json
 
 # TODO: Error handling in 'query_api'
 
 class API:
-    def query_api(self, uri, method, json={}):
+    def query_api(self, uri, method, payload={}):
         method_namespace = {
             'get': requests.get,
             'post': requests.post,
@@ -13,7 +14,7 @@ class API:
         # Attempt query:
         try:
             url = f"{self.url}/{uri}"
-            response = method_namespace[method](url, json=json).json()
+            response = method_namespace[method](url, json=payload).json()
 
             # Convert all JSON strings to Python objects:
             return_values = {}

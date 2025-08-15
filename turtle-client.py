@@ -1,23 +1,17 @@
 import requests
 import argparse
+import turtle
 import math
 import json
 import time
-import turtle
 
 from py.api import API
 from py.drawing import Drawing
 
-BG_COLOR = "#E5C287"
-turtle.bgcolor(BG_COLOR)
-# Globals
-SCALE = 4
-UNIT_COLOR = 'blue'
-TARGET_COLOR = 'red'
-MAP_COLOR = 'black'
 
 class Game(Drawing, API):
     def __init__(self, url):
+        super().__init__()
         self.url = url
         self.game_settings = {}
         # 0 = no side chosen, 1 = unit side chosen, 2 = target side chosen
@@ -38,17 +32,20 @@ class Game(Drawing, API):
         unit_button, target_button = self.draw_select_player_side_phase()
 
         # Point the buttons to their functions:
-        unit_button.onclick(choose_player_side)
-        target_button.onclick(choose_player_side)
-        # (3) Control is passed to 'choose_player_side'
+        unit_button.onclick(self.choose_player_side)
+        target_button.onclick(self.choose_player_side)
+
+        # At this point, all initial setup is complete, and control can be passed to tk
+        turtle.mainloop()
+        # (3) Control is passed to 'choose_player_side' for both buttons
 
     def choose_player_side(self, x, y):
-        # (4) Control is received from 'select_player_side_phase'
+        # (4) Control is received from button clicks from 'select_player_side_phase'
         if x < 0: # Left side is for unit player
             self.player_side = 1
             # (5A) Control is passed to 'add_unit_phase' OR
             self.add_unit_phase()
-        else: # Right side is for target player
+        elif x > 0: # Right side is for target player
             self.player_side = 2
             # OR (5B) Control is passed to 'add_target_phase'
             self.add_target_phase()
