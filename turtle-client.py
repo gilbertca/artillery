@@ -15,14 +15,14 @@ class Game(Drawing, API):
         API.__init__(self, url)
 
         self.game_settings = {} # from /game endpoint
+        self.units = {} # from /units endpoint
         self.player_side = 0 # 0 = no side chosen, 1 = unit side chosen, 2 = target side chosen
 
     def update_game_settings(self):
         self.game_settings.update(self.query_api('game', 'get'))
 
     def update_unit_list(self):
-        print(self.query_api('units', 'get'))
-        pass
+        self.units.update(self.query_api('units', 'get'))
 
     def run(self):
         self.update_game_settings()
@@ -68,7 +68,29 @@ class Game(Drawing, API):
         end_phase_button.onclick(self.set_destination_phase)
 
     def add_unit(self, x, y):
-        print(x, y)
+        # scale x and y values down from canvas:
+        x /= self.scale
+        y /= self.scale
+
+        # Create query api:
+        payload = {'x': x, 'y': y}
+        response = self.query_api('units', 'post', payload=payload)
+
+        # Print error, if it exists:
+        coordinate = response.get('coordinate')
+        if coordinate:
+            print(f"unit added at {response['coordinate']}")
+        # Otherwise, adding unit was successful:
+        else:
+            print(f"{response}")
+
+        # Redraw all turtles:
+        self.draw_all_units()
+        print(self.__dict__)
+
+        # Finish by snapping the 'add_unit_turtle' back to its original position:
+        add_unit_turtle = self.turtle_namespace.get('add_unit_phase_turtles')[-1]
+        self.draw_add_unit_turtle(text="", add_unit_turtle=add_unit_turtle)
 
     def set_destination_phase(self, _x, _y):
         # _x and _y are required since 'onclick' passes an x and y coordinate

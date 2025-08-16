@@ -10,6 +10,7 @@ class Drawing:
         self.map_color = 'black'
         self.min_radius_color = 'red'
         self.base_color = 'magenta'
+        self.destination_color = 'purple'
         self.default_color = 'black'
 
     def draw_select_player_side_phase(self):
@@ -30,7 +31,7 @@ class Drawing:
         map_turtle = self.draw_map()
 
         # Draw all positions (will be retained after 'add_unit_phase' is over)
-        unit_turtles_list = self.draw_all_units()
+        self.draw_all_units()
 
         # Draw the drag-to-drop add_unit_turtle
         add_unit_turtle = self.draw_add_unit_turtle()
@@ -46,18 +47,18 @@ class Drawing:
         self.turtle_namespace.update(
             {
                 'map_turtle': map_turtle,
-                'unit_turtles': unit_turtles_list,
                 'add_unit_phase_turtles': [end_unit_phase_button, min_radius_turtle, add_unit_turtle]
+                # 'add_unit_turtle' must be last, since 'add_unit' retrieves it via index '-1' - this is an arbitrary design detail
             }
         )
 
         # Return 'end_unit_phase_button' and 'add_unit_turtle' so the onclick events can be registered:
         return end_unit_phase_button, add_unit_turtle
 
-    def draw_add_unit_turtle(self, x=0, y=120, color=None, text="Click and drag the unit to drop it on the map"):
+    def draw_add_unit_turtle(self, x=0, y=120, color=None, text="Click and drag the unit to drop it on the map", add_unit_turtle=None):
         if color == None: color = self.default_color # self cannot be referenced in the method signature (i.e. color=self.default_color)
         # Create, setup the turtle:
-        add_unit_turtle = turtle.Turtle()
+        if add_unit_turtle == None: add_unit_turtle = turtle.Turtle()
         add_unit_turtle.hideturtle()
         add_unit_turtle.speed(0)
         add_unit_turtle.penup()
@@ -70,8 +71,9 @@ class Drawing:
         y *= self.scale
 
         # Draw add_unit_text, move the turtle to the correct locations:
-        add_unit_turtle.goto(x-20, y+20)
-        add_unit_turtle.write(text)
+        if text != "":
+            add_unit_turtle.goto(x-20, y+20)
+            add_unit_turtle.write(text)
         add_unit_turtle.goto(x, y)
 
         # Reveal and return the 'add_unit_turtle' so on-drag events can be registered to it:
@@ -92,7 +94,7 @@ class Drawing:
         # Configure shape, scale, color:
         button.color(color)
         button.shape(shape)
-        button.shapesize(2, 4, 1) # Scale Square -> Rectangle
+        button.shapesize(2, 4, 1) # Scale square -> rectangle
 
         # Draw text if applicable:
         if text != "":
@@ -133,9 +135,68 @@ class Drawing:
         return min_radius_turtle
 
     def draw_all_units(self):
+        return_position_turtles, return_destination_turtles = [], []
         # Query the API for updates to the units:
         self.update_unit_list()
 
+        # Return the list of created (or pre-existing) turtles
+        unit_turtles_list = self.turtle_namespace.get('unit_turtles')
+        if unit_turtles_list == None: unit_turtles_list = []
+
+        # Iterate over all unit positions from the API;
+        # If a turtle already exists at that location, don't create a new one;
+        # TODO: might bug out if there are multiple units at the same location, so try to avoid that for now
+        turtle_exists = False
+        for position, destination in zip(self.units['positions'], self.units['destinations']):
+            # Scale position and destination values:
+            unit_position = (position['x'] * self.scale, position['y'] * self.scale)
+            unit_destination = (destination['x'] * self.scale, destination['y'] * self.scale)
+
+            # Iterate over all existing turtles; set 'turtle_exists' to True if a turtle exists at a position already:
+            # (The first time this function is run, this for-loop is skipped)
+            for unit_turtle in unit_turtles_list:
+                turtle_position = unit_turtle.position()
+
+                # If the unit exists at a location, we don't need to continue:
+                if unit_position == turtle_position: 
+                    turtle_exists = True
+                    break # Break from inner for-loop after setting flag
+
+            # If the turtle doesn't exist, we create it and append it to the list:
+            # We also create the destination turtle
+            if not turtle_exists:
+                # Create, setup turtles:
+                unit_turtle = turtle.Turtle()
+                destination_turtle = turtle.Turtle()
+
+                # Iterate over 'dry_turtles' to copy config for both turtles:
+                for current_turtle in (unit_turtle, destination_turtle):
+                    current_turtle.hideturtle()
+                    current_turtle.speed(0)
+                    current_turtle.penup()
+
+                # Individual config for each turtle:
+                unit_turtle.goto(unit_position[0], unit_position[1])
+                unit_turtle.color(self.unit_color)
+                if unit_position == unit_destination:
+                    heading = unit_turtle.towards(0, 0)
+                else:
+                    heading = unit_turtle.towards(*unit_destination)
+                unit_turtle.setheading(heading)
+
+                destination_turtle.goto(unit_destination[0], unit_destination[1])
+                destination_turtle.color(self.destination_color)
+                destination_turtle.setheading(destination_turtle.towards(0, 0))
+
+                # Reveal turtles; append to return lists
+                unit_turtle.showturtle()
+                destination_turtle.showturtle()
+                return_position_turtles.append(unit_turtle)
+                return_destination_turtles.append(destination_turtle)
+
+        # Finish by returning the updated unit_turtle_list, and remapping the namespace:
+        self.turtle_namespace.update({'position_turtles': return_position_turtles})
+        self.turtle_namespace.update({'destination_turtles': return_destination_turtles})
 
     def draw_circle(self, x, y, color, radius, turtle, line_thickness):
         # Scale circle:
