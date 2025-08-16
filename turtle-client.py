@@ -4,6 +4,7 @@ import turtle
 import math
 import json
 import time
+import pdb
 
 from py.api import API
 from py.drawing import Drawing
@@ -86,7 +87,6 @@ class Game(Drawing, API):
 
         # Redraw all turtles:
         self.draw_all_units()
-        print(self.__dict__)
 
         # Finish by snapping the 'add_unit_turtle' back to its original position:
         add_unit_turtle = self.turtle_namespace.get('add_unit_phase_turtles')[-1]

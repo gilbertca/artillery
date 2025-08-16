@@ -1,11 +1,12 @@
 import turtle
+import pdb
 
 class Drawing:
     def __init__(self):
         turtle.bgcolor("#E5C287") # warm orange for testing
         self.turtle_namespace = {} # For easy turtle handling
         self.scale = 4 # map scale
-        self.unit_color = 'blue'
+        self.position_color = 'blue'
         self.target_color = 'red'
         self.map_color = 'black'
         self.min_radius_color = 'red'
@@ -15,7 +16,7 @@ class Drawing:
 
     def draw_select_player_side_phase(self):
         # Draw all elements in the select player side phase:
-        unit_button_args = (-100, 0, self.unit_color, "Select unit side", "square")
+        unit_button_args = (-100, 0, self.position_color, "Select unit side", "square")
         unit_button = self.draw_button(*unit_button_args)
         target_button_args = (100, 0, self.target_color, "Select target side", "square")
         target_button = self.draw_button(*target_button_args)
@@ -30,14 +31,14 @@ class Drawing:
         # Draw the permanent map surface:
         map_turtle = self.draw_map()
 
+        # Draw minimum radius (will be cleared after 'add_unit_phase' is over)
+        min_radius_turtle = self.draw_minimum_radius()
+
         # Draw all positions (will be retained after 'add_unit_phase' is over)
         self.draw_all_units()
 
         # Draw the drag-to-drop add_unit_turtle
         add_unit_turtle = self.draw_add_unit_turtle()
-
-        # Draw minimum radius (will be cleared after 'add_unit_phase' is over)
-        min_radius_turtle = self.draw_minimum_radius()
 
         # Draw and return the end_unit_phase button (will be cleared after it is clicked / phase is over)
         end_unit_phase_button_args = (0, -120, self.default_color, "End add unit phase", "square")
@@ -140,7 +141,7 @@ class Drawing:
         self.update_unit_list()
 
         # Return the list of created (or pre-existing) turtles
-        unit_turtles_list = self.turtle_namespace.get('unit_turtles')
+        unit_turtles_list = self.turtle_namespace.get('position_turtles')
         if unit_turtles_list == None: unit_turtles_list = []
 
         # Iterate over all unit positions from the API;
@@ -170,22 +171,23 @@ class Drawing:
                 destination_turtle = turtle.Turtle()
 
                 # Iterate over 'dry_turtles' to copy config for both turtles:
-                for current_turtle in (unit_turtle, destination_turtle):
+                for current_turtle, coordinates, color in zip(
+                    (unit_turtle, destination_turtle),
+                    (unit_position, unit_destination),
+                    (self.position_color, self.destination_color)
+                ):
                     current_turtle.hideturtle()
                     current_turtle.speed(0)
                     current_turtle.penup()
+                    current_turtle.goto(*coordinates)
+                    current_turtle.color(color)
 
-                # Individual config for each turtle:
-                unit_turtle.goto(unit_position[0], unit_position[1])
-                unit_turtle.color(self.unit_color)
+                # Units face their destination, or the origin if the destinaion and position are the same
                 if unit_position == unit_destination:
                     heading = unit_turtle.towards(0, 0)
                 else:
                     heading = unit_turtle.towards(*unit_destination)
                 unit_turtle.setheading(heading)
-
-                destination_turtle.goto(unit_destination[0], unit_destination[1])
-                destination_turtle.color(self.destination_color)
                 destination_turtle.setheading(destination_turtle.towards(0, 0))
 
                 # Reveal turtles; append to return lists
