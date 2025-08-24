@@ -135,6 +135,8 @@ class Drawing:
         return min_radius_turtle
 
     def draw_all_units(self):
+        # TODO EDGE CASE: After disconnecting and reconnecting, the strange 'draws every turtle' bug occurs
+        # But it doesn't appear on the first run of the server/client
         return_position_turtles, return_destination_turtles = [], []
         # Query the API for updates to the units:
         self.update_unit_list()
