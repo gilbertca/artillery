@@ -1,5 +1,4 @@
 import turtle
-import pdb
 
 class Drawing:
     def __init__(self):

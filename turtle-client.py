@@ -4,7 +4,6 @@ import turtle
 import math
 import json
 import time
-import pdb
 
 from py.api import API
 from py.drawing import Drawing
