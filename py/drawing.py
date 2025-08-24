@@ -145,10 +145,8 @@ class Drawing:
         if unit_turtles_list == None: unit_turtles_list = []
 
         # Iterate over all unit positions from the API;
-        # If a turtle already exists at that location, don't create a new one;
-        # TODO: might bug out if there are multiple units at the same location, so try to avoid that for now
-        turtle_exists = False
         for position, destination in zip(self.units['positions'], self.units['destinations']):
+            turtle_exists = False
             # Scale position and destination values:
             unit_position = (position['x'] * self.scale, position['y'] * self.scale)
             unit_destination = (destination['x'] * self.scale, destination['y'] * self.scale)
