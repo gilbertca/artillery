@@ -1,5 +1,6 @@
-import requests
-import json
+from json import loads
+
+from requests import delete, get, post
 
 # TODO: Error handling in 'query_api'
 
@@ -9,9 +10,9 @@ class API:
 
     def query_api(self, uri, method, payload={}):
         method_namespace = {
-            'get': requests.get,
-            'post': requests.post,
-            'delete': requests.delete,
+            'delete': delete,
+            'get': get,
+            'post': post,
         }
 
         # Attempt query:
@@ -22,7 +23,7 @@ class API:
             # Convert all JSON strings to Python objects:
             return_values = {}
             for key, value in response.items():
-                return_values.update({key: json.loads(value)})
+                return_values.update({key: loads(value)})
 
             return return_values
 

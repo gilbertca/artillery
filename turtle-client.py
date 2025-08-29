@@ -1,9 +1,6 @@
-import requests
-import argparse
-import turtle
-import math
-import json
-import time
+from argparse import ArgumentParser
+from turtle import mainloop
+from turtle import Turtle
 
 from py.api import API
 from py.drawing import Drawing
@@ -40,7 +37,7 @@ class Game(Drawing, API):
         target_button.onclick(self.choose_player_side)
 
         # At this point, all initial setup is complete, and control can be passed to tk
-        turtle.mainloop()
+        mainloop()
         # (3) Control is passed to 'choose_player_side' for both buttons
 
     def choose_player_side(self, x, y):
@@ -93,15 +90,19 @@ class Game(Drawing, API):
 
     def set_destination_phase(self, _x, _y):
         # _x and _y are required since 'onclick' passes an x and y coordinate
-        # Start by cleaning up 'add_unit_phase_temporary_turtles':
+        # Start by cleaning up 'add_unit_phase_turtles':
         self.hide_turtles('add_unit_phase_turtles')
+
+        # Bind drag-drog functions for setting destinations:
+        breakpoint()
+
 
     def add_target_phase(self):
         pass
 
 if __name__ == "__main__":
     # Setup arguments:
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
             description="A client written with Python's turtle for the Artillery game.")
     parser.add_argument("--url", type=str, required=True)
     args = parser.parse_args()
