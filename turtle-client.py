@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+# TODO: The various buttons, objects, and units, should be represented as subclasses of Turtle, which allows us to extend the 'onclick' 'onrelease' and 'ondrag' functions to include more arguments
 from turtle import mainloop
 from turtle import Turtle
 
@@ -33,23 +34,24 @@ class Game(Drawing, API):
         unit_button, target_button = self.draw_select_player_side_phase()
 
         # Point the buttons to their functions:
-        unit_button.onclick(self.choose_player_side)
+        unit_button.onclick(partial(self.choose_player_side, )
         target_button.onclick(self.choose_player_side)
 
         # At this point, all initial setup is complete, and control can be passed to tk
         mainloop()
         # (3) Control is passed to 'choose_player_side' for both buttons
 
-    def choose_player_side(self, x, y):
+    def choose_player_side(self, _x, _y, player_side_int):
         # (4) Control is received from button clicks from 'select_player_side_phase'
-        if x < 0: # Left side is for unit player
-            self.player_side = 1
-            # (5A) Control is passed to 'add_unit_phase' OR
+        self.player_side = player_side_int
+        # (5A) Control is passed to 'add_unit_phase' OR
+        # OR (5B) Control is passed to 'add_target_phase'
+        if player_side_int == 1:
             self.add_unit_phase()
-        elif x > 0: # Right side is for target player
-            self.player_side = 2
-            # OR (5B) Control is passed to 'add_target_phase'
+        elif player_side_int == 2:
             self.add_target_phase()
+        else:
+            raise ValueError(f"choose_player side received a value of {player_side_int}, for 'player_side_int'. This value should be equal to 1 or 2.")
 
     def add_unit_phase(self):
         # (6A) Control is received from 'choose_player_side'
@@ -89,12 +91,20 @@ class Game(Drawing, API):
         self.draw_add_unit_turtle(text="", add_unit_turtle=add_unit_turtle)
 
     def set_destination_phase(self, _x, _y):
-        # _x and _y are required since 'onclick' passes an x and y coordinate
+        # _x and _y are required since 'onclick' calles this function with an x and y coordinate
+        # (7A) control is received from 'add_unit_phase'
         # Start by cleaning up 'add_unit_phase_turtles':
         self.hide_turtles('add_unit_phase_turtles')
 
         # Bind drag-drog functions for setting destinations:
-        breakpoint()
+        destination_turtles = self.turtle_namespace.get('destination_turtles')
+        for turtle in destination_turtles:
+            turtle.onclick(...) # Draw the maximum movement distance around the associated unit
+            turtle.ondrag(...) # Move the turtle to the cursor, placing it on the edge if it moves too far
+            turtle.onrelease(...) # Place the unit destination at that position, attempting an API call
+
+        # Create a 'run_turn' button, bind the API call:
+        ...
 
 
     def add_target_phase(self):
