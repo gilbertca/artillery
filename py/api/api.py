@@ -2,13 +2,24 @@ from json import loads
 
 from requests import delete, get, post
 
-# TODO: Error handling in 'query_api'
 
 class API:
+    """API serves as an interface between the client and server.
+
+    An API is initialized with a `url`. This `url` is manipulated internally
+    to query the various endpoints. Users of the API class should always use
+    the method dedicated to a specific endpoint (for example, `add_unit`).
+
+    Users of the API class should NOT use the _query_api method;
+    Let the API class do all of the validation and error handling.
+
+    Params:
+        `url` - The url to a running **artillery** server (prepended with 'http://')
+    """
     def __init__(self, url):
         self.url = url
 
-    def query_api(self, uri, method, payload={}):
+    def _query_api(self, uri, method, payload={}):
         method_namespace = {
             'delete': delete,
             'get': get,
@@ -29,7 +40,7 @@ class API:
 
         # Method is incorrect
         except KeyError as method_error:
-            raise method_error
+            raise method_error(f"Expected a value in {[method for method in method_namespace.keys()]}, but API received {method}")
 
         # All other request errors
         except Exception as e:
